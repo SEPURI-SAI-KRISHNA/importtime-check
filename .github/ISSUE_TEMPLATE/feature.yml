@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a focused improvement to importtime-check.
+title: "feature: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the user problem rather than only the requested mechanism.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include inputs, outputs, failure behavior, and a brief example.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or different designs did you consider?
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Note API, baseline format, Python, platform, or dependency effects.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched open and closed issues for a similar proposal.
+          required: true
+        - label: I understand that design discussion may precede implementation.
+          required: true

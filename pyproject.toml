@@ -65,9 +65,13 @@ path = "src/importtime_check/_version.py"
 include = [
     "/src",
     "/tests",
+    "/tools",
+    "/docs",
+    "/CONTRIBUTING.md",
     "/LICENSE",
     "/NOTICE",
     "/README.md",
+    "/SECURITY.md",
     "/pyproject.toml",
 ]
 
@@ -99,7 +103,7 @@ strict = true
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
-files = ["src", "tests"]
+files = ["src", "tests", "tools"]
 exclude = ["^\\.tmp/"]
 
 [tool.pytest]

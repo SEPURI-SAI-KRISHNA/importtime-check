@@ -1,5 +1,7 @@
 # importtime-check
 
+[![CI](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/actions/workflows/ci.yml/badge.svg)](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/actions/workflows/ci.yml)
+
 `importtime-check` is a planned CI gate for detecting regressions in Python
 import time. It will measure imports in clean subprocesses, compare results
 with deterministic baselines, and report actionable diagnostics when startup
@@ -29,7 +31,7 @@ Run the local quality gate from the repository root:
 ```console
 python -m ruff format --check .
 python -m ruff check .
-python -m mypy src tests
+python -m mypy src tests tools
 python -m pytest
 ```
 
@@ -38,7 +40,12 @@ Build validation uses fresh artifacts in the ignored `.tmp` directory:
 ```console
 python -m build --outdir .tmp/dist
 python -m twine check .tmp/dist/*
+python -m tools.validate_artifacts .tmp/dist
+python -m tools.smoke_wheel .tmp/dist
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete contribution workflow
+and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## Planned focus
 
