@@ -44,6 +44,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0002-quality-and-test-policy.md",
     "docs/design/0003-contribution-governance-and-release-tracking.md",
     "docs/design/0004-contributor-friendly-templates.md",
+    "docs/design/0005-parser-and-domain-model-contract.md",
     "docs/design/README.md",
     "LICENSE",
     "NOTICE",
