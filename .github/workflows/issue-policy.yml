@@ -1,0 +1,51 @@
+name: Issue policy
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-policy-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  issue-template:
+    name: Issue template
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Validate issue form
+        id: validate
+        continue-on-error: true
+        run: python -m tools.contribution_policy issue-event --event "$GITHUB_EVENT_PATH"
+
+      - name: Explain and close an invalid issue
+        if: steps.validate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body 'This issue was closed because it does not match an approved Issue Form. Please create a new issue from the Bug report, Feature request, or Implementation task form and complete every required field. Report security vulnerabilities privately through SECURITY.md.'
+          gh issue close "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY"
+
+      - name: Require a valid issue form
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
