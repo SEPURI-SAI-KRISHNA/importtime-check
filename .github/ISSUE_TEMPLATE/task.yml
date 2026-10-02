@@ -1,0 +1,67 @@
+name: Implementation task
+description: Define an approved, focused implementation unit.
+title: "task: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for implementation work with an agreed direction. Use a
+        feature request first when the behavior or design still needs a decision.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: State the concrete outcome in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Explain why this work is needed now and who benefits.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List the implementation, tests, and documentation included.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List objective, externally verifiable completion conditions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State adjacent work that must remain outside this issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Link relevant design records, documentation, or earlier issues.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched open and closed issues for duplicate work.
+          required: true
+        - label: This task is focused enough for one pull request.
+          required: true

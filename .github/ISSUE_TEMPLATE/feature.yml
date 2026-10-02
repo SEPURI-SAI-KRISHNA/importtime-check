@@ -1,6 +1,8 @@
 name: Feature request
 description: Propose a focused improvement to importtime-check.
 title: "feature: "
+labels:
+  - enhancement
 body:
   - type: textarea
     id: problem
@@ -29,6 +31,22 @@ body:
     attributes:
       label: Compatibility impact
       description: Note API, baseline format, Python, platform, or dependency effects.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the observable conditions that would make this complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State what this proposal deliberately does not include.
+    validations:
+      required: true
 
   - type: checkboxes
     id: checks
