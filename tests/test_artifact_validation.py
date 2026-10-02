@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 from tools.validate_artifacts import (
+    EXPECTED_PACKAGE_FILES,
     EXPECTED_SDIST_FILES,
     ArtifactValidationError,
     discover_artifacts,
@@ -103,7 +104,7 @@ def _build_fixture_artifacts(
     wheel_path = dist_dir / f"{STEM}-py3-none-any.whl"
     dist_info = f"{STEM}.dist-info"
     with zipfile.ZipFile(wheel_path, mode="w") as archive:
-        for filename in ("__init__.py", "_version.py", "py.typed"):
+        for filename in EXPECTED_PACKAGE_FILES:
             source_name = f"src/importtime_check/{filename}"
             archive.writestr(f"importtime_check/{filename}", files[source_name])
         archive.writestr(f"{dist_info}/licenses/LICENSE", files["LICENSE"])

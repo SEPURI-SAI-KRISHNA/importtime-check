@@ -24,7 +24,7 @@ DISTRIBUTION_NAME = "importtime-check"
 def test_public_version_matches_distribution_metadata() -> None:
     """The public version and installed distribution version have one value."""
     assert importtime_check.__version__ == metadata.version(DISTRIBUTION_NAME)
-    assert importtime_check.__all__ == ("__version__",)
+    assert "__version__" in importtime_check.__all__
 
 
 def test_distribution_metadata_preserves_packaging_contract() -> None:

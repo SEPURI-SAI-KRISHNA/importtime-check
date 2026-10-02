@@ -14,6 +14,14 @@
 
 """Public package interface for importtime-check."""
 
+from ._model import ImportTimeEvent, ImportTimeParseResult
+from ._parser import ImportTimeParseError, parse_importtime
 from ._version import __version__
 
-__all__ = ("__version__",)
+__all__ = (
+    "ImportTimeEvent",
+    "ImportTimeParseError",
+    "ImportTimeParseResult",
+    "__version__",
+    "parse_importtime",
+)
