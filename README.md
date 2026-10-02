@@ -14,6 +14,27 @@ instructions and a stable public API are not available yet.
 
 The first planned release is `0.1.0a1`. Python 3.11 or newer will be required.
 
+The numeric stderr produced by CPython's `-X importtime` option can already be
+parsed without executing a subprocess:
+
+```python
+from importtime_check import parse_importtime
+
+result = parse_importtime(
+    "import time: self [us] | cumulative | imported package\n"
+    "import time:        12 |         34 | example"
+)
+event = result.events[0]
+assert (event.module, event.self_us, event.cumulative_us, event.depth) == (
+    "example",
+    12,
+    34,
+    0,
+)
+```
+
+This API remains pre-alpha and may change before the first stable release.
+
 ## Development
 
 Create a virtual environment with Python 3.11 or newer, then install the

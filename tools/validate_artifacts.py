@@ -35,6 +35,8 @@ IMPORT_NAME = "importtime_check"
 EXPECTED_LICENSE_FILES = frozenset({"LICENSE", "NOTICE"})
 EXPECTED_PACKAGE_FILES = (
     "__init__.py",
+    "_model.py",
+    "_parser.py",
     "_version.py",
     "py.typed",
 )
@@ -52,10 +54,13 @@ EXPECTED_SDIST_FILES = (
     "SECURITY.md",
     "pyproject.toml",
     "src/importtime_check/__init__.py",
+    "src/importtime_check/_model.py",
+    "src/importtime_check/_parser.py",
     "src/importtime_check/_version.py",
     "src/importtime_check/py.typed",
     "tests/test_artifact_validation.py",
     "tests/test_package_contract.py",
+    "tests/test_parser.py",
     "tools/__init__.py",
     "tools/smoke_wheel.py",
     "tools/validate_artifacts.py",
