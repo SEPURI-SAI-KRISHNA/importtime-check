@@ -18,6 +18,11 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 - consequences and implementation follow-ups; and
 - links to the deciding issue and primary sources.
 
+## Records
+
+1. [0001: Packaging and compatibility contract](0001-packaging-and-compatibility.md)
+2. [0002: Quality and test policy](0002-quality-and-test-policy.md)
+
 ## Lifecycle
 
 - **Proposed:** discussion is active and implementation must not depend on the
