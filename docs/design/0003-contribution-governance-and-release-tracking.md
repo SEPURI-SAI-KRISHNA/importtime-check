@@ -1,10 +1,14 @@
 # 0003: Contribution governance and release tracking
 
-- Status: Accepted
+- Status: Superseded by [0004](0004-contributor-friendly-templates.md)
 - Acceptance: merge of the pull request that adds this record
 - Decision date: 2026-10-02
 - Decision issue: [#14](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/issues/14)
 - Owners: `importtime-check` maintainers
+
+This record is retained as the historical decision implemented by PR #15.
+Record 0004 replaces its strict body-validation approach with concise,
+contributor-friendly templates and review-based enforcement.
 
 ## Context
 

@@ -13,16 +13,16 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: Description
-      description: Concisely describe the problem and its impact.
+      label: What happened?
+      description: Describe the problem and its impact.
     validations:
       required: true
 
   - type: textarea
     id: reproduction
     attributes:
-      label: Steps to reproduce
-      description: Provide the smallest commands, code, and inputs that reproduce it.
+      label: How can we reproduce it?
+      description: Provide the smallest commands, code, and input that reproduce it.
       render: shell
     validations:
       required: true
@@ -30,16 +30,14 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      description: What should have happened?
+      label: What did you expect to happen?
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual behavior
-      description: What happened instead?
+      label: What happened instead?
     validations:
       required: true
 
@@ -73,11 +71,22 @@ body:
       required: true
 
   - type: textarea
-    id: output
+    id: integrations
     attributes:
-      label: Relevant output
+      label: Relevant integration versions
+      description: List relevant tools or integrations, if any.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or output
       description: Remove credentials, tokens, private paths, and other sensitive data.
       render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
 
   - type: checkboxes
     id: checks

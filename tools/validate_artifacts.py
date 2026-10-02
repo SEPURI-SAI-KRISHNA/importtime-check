@@ -43,6 +43,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0001-packaging-and-compatibility.md",
     "docs/design/0002-quality-and-test-policy.md",
     "docs/design/0003-contribution-governance-and-release-tracking.md",
+    "docs/design/0004-contributor-friendly-templates.md",
     "docs/design/README.md",
     "LICENSE",
     "NOTICE",
@@ -53,10 +54,8 @@ EXPECTED_SDIST_FILES = (
     "src/importtime_check/_version.py",
     "src/importtime_check/py.typed",
     "tests/test_artifact_validation.py",
-    "tests/test_contribution_policy.py",
     "tests/test_package_contract.py",
     "tools/__init__.py",
-    "tools/contribution_policy.py",
     "tools/smoke_wheel.py",
     "tools/validate_artifacts.py",
 )

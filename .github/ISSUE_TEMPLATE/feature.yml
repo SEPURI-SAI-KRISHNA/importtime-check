@@ -1,4 +1,4 @@
-name: Feature request
+name: Feature proposal
 description: Propose a focused improvement to importtime-check.
 title: "feature: "
 labels:
@@ -7,8 +7,16 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem to solve
+      label: What problem would this solve?
       description: Describe the user problem rather than only the requested mechanism.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why is this important?
+      description: Explain who benefits and why the change is useful.
     validations:
       required: true
 
@@ -16,7 +24,7 @@ body:
     id: proposal
     attributes:
       label: Proposed behavior
-      description: Include inputs, outputs, failure behavior, and a brief example.
+      description: Describe the expected behavior, including a short example when useful.
     validations:
       required: true
 
@@ -24,19 +32,19 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: What workarounds or different designs did you consider?
+      description: Describe workarounds or other designs you considered.
 
   - type: textarea
-    id: compatibility
+    id: impact
     attributes:
-      label: Compatibility impact
-      description: Note API, baseline format, Python, platform, or dependency effects.
+      label: User-facing or compatibility impact
+      description: Note behavior, API, format, Python, platform, or migration effects.
 
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: List the observable conditions that would make this complete.
+      description: List observable conditions that would make this complete.
     validations:
       required: true
 
@@ -44,9 +52,7 @@ body:
     id: non_goals
     attributes:
       label: Non-goals
-      description: State what this proposal deliberately does not include.
-    validations:
-      required: true
+      description: State adjacent work that is intentionally excluded.
 
   - type: checkboxes
     id: checks
@@ -54,6 +60,4 @@ body:
       label: Checks
       options:
         - label: I searched open and closed issues for a similar proposal.
-          required: true
-        - label: I understand that design discussion may precede implementation.
           required: true

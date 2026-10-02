@@ -1,39 +1,38 @@
-## Summary
+## What changes are proposed?
 
-<!-- Explain the user or maintainer problem and the chosen solution. -->
+<!-- Describe the focused change and its important implementation details. -->
+
+## Why are these changes needed?
+
+<!-- Explain the user, contributor, or operational problem being solved. -->
 
 ## Related issue
 
-<!-- A same-repository, open issue with a milestone is mandatory. -->
+<!-- Link one open issue using closing syntax. -->
 
-Closes #REQUIRED
+Closes #ISSUE
+
+## User-facing behavior or migration impact
+
+<!-- Describe changed behavior or migration steps. Write "None" when not applicable. -->
 
 ## Validation
 
-<!-- List exact commands, results, and relevant manual checks. -->
+<!-- List exact commands and their real outcomes. -->
 
-## Compatibility and risk
+## Compatibility, risk, and rollback
 
-<!-- Describe API, format, Python, platform, security, or migration impact. -->
+<!-- Describe compatibility, important risks, and how the change can be rolled back. -->
 
-## Documentation
+## Documentation and follow-up
 
-<!-- Select exactly one and replace its trailing guidance with concrete text. -->
-
-- [ ] Documentation updated: <!-- explain what changed -->
-- [ ] No documentation change needed: <!-- explain why -->
-
-## Release note
-
-<!-- Select exactly one and replace its trailing guidance with concrete text. -->
-
-- [ ] User-visible change: <!-- provide a concise release-note summary -->
-- [ ] No release note needed: <!-- explain why this is not user-visible -->
+<!-- Describe documentation changes and any intentionally deferred work. -->
 
 ## Checklist
 
-- [ ] Tests cover the changed behavior and failure paths, or the validation section explains why tests are unnecessary.
-- [ ] Public behavior and documentation agree, or no public behavior changed.
-- [ ] No runtime dependency or compatibility promise changed unintentionally.
-- [ ] Commits include DCO sign-off (`Signed-off-by`).
-- [ ] I preserved every required section of this pull request template.
+- [ ] The pull request closes one open issue and contains no unrelated work.
+- [ ] Tests were added or updated where needed, and the results are recorded above.
+- [ ] Documentation was updated where needed.
+- [ ] Compatibility, migration, risk, and rollback were considered.
+- [ ] No secrets, credentials, private paths, or other private data are included.
+- [ ] Every human-authored commit includes DCO sign-off (`Signed-off-by`).

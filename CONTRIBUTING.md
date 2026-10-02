@@ -6,19 +6,20 @@ without an open, same-repository issue are not accepted.
 
 ## Issues and planning
 
-Choose the Bug report, Feature request, or Implementation task form and
-complete every required field. Do not replace the rendered form with a custom
-body. Reports containing secrets or suspected vulnerabilities must use the
-private process in [SECURITY.md](SECURITY.md), never a public issue.
+Choose the Bug report, Feature proposal, Design proposal, Maintenance task, or
+Release checklist that best matches the work. The forms ask for the information
+needed for that kind of contribution without forcing unrelated questions.
+Reports containing secrets or suspected vulnerabilities must use the private
+process in [SECURITY.md](SECURITY.md), never a public issue.
 
 Maintainers assign implementation issues to a release milestone before a pull
 request is opened. Milestones own release progress; labels classify the kind
 of change. A project board may be introduced when concurrent work makes a
 second planning view useful, but it is not another source of release truth.
 
-The issue-policy workflow checks new, edited, and reopened issues. An issue
-that bypasses every approved form is closed with instructions to submit it
-again correctly. This also applies to issues created through the API or CLI.
+Blank issues are disabled. Maintainers use review and normal triage to request
+missing context; submissions are not automatically closed because prose or
+headings differ.
 
 ## Development environment
 
@@ -86,30 +87,25 @@ type(optional-scope): imperative summary
 Allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`,
 `refactor`, and `test`. Keep the complete title at 80 characters or fewer.
 
-Every pull request must retain all sections of the tracked pull request
-template and contain exactly one closing reference such as `Closes #123`. The
-linked issue must still be open, use an approved Issue Form, and have a
-milestone. This requirement also applies to automated dependency pull requests
-before they can merge.
+Every pull request follows the tracked Apache-inspired template and contains a
+closing reference such as `Closes #123` to one open, milestone-assigned issue.
+Its eight sections explain the proposal, motivation, issue, user impact,
+validation, compatibility and rollback, documentation and follow-up, and a
+short practical checklist. Maintainers request corrections during review when
+context is missing; custom code does not police contributor prose.
 
-The body must list exact validation, explain compatibility and risk, make one
-documentation decision, and make one release-note decision. Complete every
-checklist item truthfully. A maintainer may request that a design record
-precede a long-lived public contract.
-
-The contribution-policy workflow reads its validator from trusted `main`; it
-does not execute code from the pull request. Repository rules require both the
-policy check and aggregate CI check before `main` can accept a merge.
+A design proposal and accepted design record precede changes to public APIs,
+serialized formats, compatibility promises, architecture, dependencies,
+security-sensitive behavior, release policy, or contributor governance.
+Repository rules require a pull request and aggregate `CI` before `main` can
+accept a merge.
 
 ## Release notes and changelog
 
-Not every internal change is useful release news. Select `User-visible change`
-in the pull request template and provide a concise user-facing summary when
-behavior, compatibility, or documented usage changes. Select
-`No release note needed` with a reason for CI, tests, refactoring, and other
-internal maintenance. User-visible changes need one generated-release-note
-category label; internal-only changes use `skip-release-notes`. The policy
-check rejects a release-note selection that contradicts these labels.
+Not every internal change is useful release news. Describe user-facing behavior
+and migration impact in the pull request, or write `None` when it is not
+applicable. Maintainers apply a generated-release-note category label to
+user-visible work and `skip-release-notes` to internal-only changes.
 
 GitHub generated release notes group merged pull requests by labels. The
 project does not require every pull request to edit one shared `CHANGELOG.md`;
