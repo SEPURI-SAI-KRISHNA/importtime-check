@@ -1,0 +1,63 @@
+name: Design proposal
+description: Discuss a public contract or architectural decision before implementation.
+title: "design: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Describe the current behavior and the decision that must be made.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed contract
+      description: Describe behavior, ownership, and failure semantics.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Compare the important alternatives.
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration
+      description: Explain compatibility promises and any migration path.
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and rollback
+      description: Identify important risks and how the decision could be reversed safely.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the conditions required to accept the design.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State decisions and implementation work that remain outside this proposal.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and design records for this decision.
+          required: true

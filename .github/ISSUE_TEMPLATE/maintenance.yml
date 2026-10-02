@@ -1,0 +1,66 @@
+name: Maintenance task
+description: Propose a focused repository, automation, or maintenance change.
+title: "maintenance: "
+labels:
+  - maintenance
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What needs maintenance?
+      description: Describe the operational or repository problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed change
+      description: Describe the smallest complete change that resolves the problem.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core
+        - API
+        - CLI
+        - Packaging
+        - CI
+        - Documentation
+        - Testing
+        - Release
+        - Governance
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Explain how the change will be verified.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risk and rollback
+      description: Note important risks and how the change can be rolled back.
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State adjacent work that is intentionally excluded.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched open and closed issues for duplicate work.
+          required: true

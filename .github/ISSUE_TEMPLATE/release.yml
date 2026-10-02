@@ -1,0 +1,61 @@
+name: Release checklist
+description: Plan and verify one package release.
+title: "release: "
+labels:
+  - release
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Target version
+      placeholder: "For example: 0.1.0a1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Release scope
+      description: Link the milestone and summarize the included changes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: preparation
+    attributes:
+      label: Preparation
+      description: List version, documentation, security, CI, and artifact preparation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: publication
+    attributes:
+      label: Publication
+      description: List approval, Trusted Publishing, and exact-artifact steps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Post-release verification
+      description: List index, installation, provenance, and documentation checks.
+    validations:
+      required: true
+
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Risks and recovery
+      description: Identify release risks and recovery steps; published files are immutable.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The target milestone accurately represents this release scope.
+          required: true
+        - label: Only the exact reviewed and validated artifacts will be published.
+          required: true
