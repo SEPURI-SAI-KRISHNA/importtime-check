@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "importtime-check"
+dynamic = ["version"]
+description = "Detect Python import-time regressions in CI."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+dependencies = []
+keywords = [
+    "ci",
+    "import-time",
+    "performance",
+    "pytest",
+    "regression-testing",
+    "startup-time",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Benchmark",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Repository = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check"
+Issues = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check/issues"
+
+[tool.hatch.version]
+path = "src/importtime_check/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/LICENSE",
+    "/NOTICE",
+    "/README.md",
+    "/pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/importtime_check"]
