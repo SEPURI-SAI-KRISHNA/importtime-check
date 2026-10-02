@@ -12,6 +12,34 @@ instructions and a stable public API are not available yet.
 
 The first planned release is `0.1.0a1`. Python 3.11 or newer will be required.
 
+## Development
+
+Create a virtual environment with Python 3.11 or newer, then install the
+project and its unpublished development dependency group. Dependency-group
+installation requires pip 25.1 or newer.
+
+```console
+python -m venv .venv
+python -m pip install --upgrade "pip>=25.1"
+python -m pip install --group dev --editable .
+```
+
+Run the local quality gate from the repository root:
+
+```console
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy src tests
+python -m pytest
+```
+
+Build validation uses fresh artifacts in the ignored `.tmp` directory:
+
+```console
+python -m build --outdir .tmp/dist
+python -m twine check .tmp/dist/*
+```
+
 ## Planned focus
 
 - Repeatable import-time measurements with noise control.
