@@ -46,8 +46,12 @@ The child receives a fixed argument vector equivalent to:
 <python_executable> -I -X importtime -c <fixed importlib snippet> <module>
 ```
 
-The fixed snippet reads the module from `sys.argv` and calls
-`importlib.import_module`; it never evaluates module text as code. The process
+The fixed snippet reads the module from `sys.argv` and calls the built-in
+`__import__`; it never evaluates module text as code. Issue #22's real-process
+test found that calling `importlib.import_module` directly on CPython 3.11
+imported the target without emitting its own timing row, while `__import__`
+emitted the row required by this contract. This corrects the implementation
+detail without changing the public API. The process
 has closed stdin, discarded stdout, and captured stderr. The caller's
 environment is snapshotted when the operation begins and passed to each child.
 Python's `-I` mode ignores Python-specific environment variables, excludes the
