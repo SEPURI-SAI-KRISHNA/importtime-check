@@ -35,6 +35,21 @@ assert (event.module, event.self_us, event.cumulative_us, event.depth) == (
 
 This API remains pre-alpha and may change before the first stable release.
 
+To measure one installed module in a fresh CPython process:
+
+```python
+from importtime_check import measure_import
+
+measurement = measure_import("json")
+print(measurement.target_event.cumulative_us)  # integer microseconds
+```
+
+The target must be installed in the selected interpreter. The child uses
+Python's isolated mode, so the current directory and user site packages are
+not import locations. This reports CPython's target import time, not total
+process startup time. Repeated sampling and regression checks are still
+planned.
+
 ## Development
 
 Create a virtual environment with Python 3.11 or newer, then install the

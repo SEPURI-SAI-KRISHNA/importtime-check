@@ -14,14 +14,18 @@
 
 """Public package interface for importtime-check."""
 
+from ._measurement import ImportMeasurement, ImportMeasurementError, measure_import
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
 from ._version import __version__
 
 __all__ = (
+    "ImportMeasurement",
+    "ImportMeasurementError",
     "ImportTimeEvent",
     "ImportTimeParseError",
     "ImportTimeParseResult",
     "__version__",
+    "measure_import",
     "parse_importtime",
 )

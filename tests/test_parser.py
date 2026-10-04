@@ -151,9 +151,12 @@ def test_result_rejects_invalid_nested_values(
 
 def test_public_exports_are_exact() -> None:
     assert importtime_check.__all__ == (
+        "ImportMeasurement",
+        "ImportMeasurementError",
         "ImportTimeEvent",
         "ImportTimeParseError",
         "ImportTimeParseResult",
         "__version__",
+        "measure_import",
         "parse_importtime",
     )
