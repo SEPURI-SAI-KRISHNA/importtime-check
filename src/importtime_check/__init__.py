@@ -17,15 +17,18 @@
 from ._measurement import ImportMeasurement, ImportMeasurementError, measure_import
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
+from ._sampling import ImportSampleSet, sample_import
 from ._version import __version__
 
 __all__ = (
     "ImportMeasurement",
     "ImportMeasurementError",
+    "ImportSampleSet",
     "ImportTimeEvent",
     "ImportTimeParseError",
     "ImportTimeParseResult",
     "__version__",
     "measure_import",
     "parse_importtime",
+    "sample_import",
 )

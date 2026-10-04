@@ -153,10 +153,12 @@ def test_public_exports_are_exact() -> None:
     assert importtime_check.__all__ == (
         "ImportMeasurement",
         "ImportMeasurementError",
+        "ImportSampleSet",
         "ImportTimeEvent",
         "ImportTimeParseError",
         "ImportTimeParseResult",
         "__version__",
         "measure_import",
         "parse_importtime",
+        "sample_import",
     )

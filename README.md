@@ -47,8 +47,20 @@ print(measurement.target_event.cumulative_us)  # integer microseconds
 The target must be installed in the selected interpreter. The child uses
 Python's isolated mode, so the current directory and user site packages are
 not import locations. This reports CPython's target import time, not total
-process startup time. Repeated sampling and regression checks are still
-planned.
+process startup time. For a less noisy observation, use repeated sampling:
+
+```python
+from importtime_check import sample_import
+
+result = sample_import("json", warmups=1, samples=5)
+print(result.median_cumulative_us)  # upper median, integer microseconds
+print([run.target_event.cumulative_us for run in result.samples])
+```
+
+Each warmup and sample uses a fresh child process. Warmups are preserved but
+excluded from the median. This reduces single-run noise; it does not guarantee
+that two machines or CI runs have comparable timings. Regression checks are
+still planned.
 
 ## Development
 

@@ -167,6 +167,19 @@ def measure_import(
     timeout = _timeout(timeout_seconds)
     directory = _working_directory(working_directory)
     environment = os.environ.copy()
+    return _measure_import_validated(
+        module, interpreter, timeout, directory, environment
+    )
+
+
+def _measure_import_validated(
+    module: str,
+    interpreter: str,
+    timeout: float,
+    directory: Path,
+    environment: dict[str, str],
+) -> ImportMeasurement:
+    """Execute one run using already validated, snapshotted configuration."""
     arguments = [interpreter, "-I", "-X", "importtime", "-c", _IMPORT_SNIPPET, module]
 
     try:
