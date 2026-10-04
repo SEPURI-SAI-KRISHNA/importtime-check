@@ -59,8 +59,34 @@ print([run.target_event.cumulative_us for run in result.samples])
 
 Each warmup and sample uses a fresh child process. Warmups are preserved but
 excluded from the median. This reduces single-run noise; it does not guarantee
-that two machines or CI runs have comparable timings. Regression checks are
-still planned.
+that two machines or CI runs have comparable timings.
+
+The library also supports reviewable baselines and exact regression decisions:
+
+```python
+from importtime_check import (
+    check_baseline,
+    probe_environment,
+    record_baseline,
+    sample_import,
+    save_baseline,
+)
+
+baseline = record_baseline(
+    {"json": sample_import("json")},
+    probe_environment(),
+    max_increase_us=25,
+    max_increase_percent="10",
+)
+save_baseline("importtime-baseline.json", baseline)
+report = check_baseline(baseline)
+print(report.status)  # "pass" or "regression"
+```
+
+Baselines are versioned JSON and require the same Python minor version,
+platform, machine, and profile at check time. Review baseline changes before
+using them as CI policy; matching identity does not eliminate host noise. The
+CLI and optional pytest adapter are still planned.
 
 ## Development
 

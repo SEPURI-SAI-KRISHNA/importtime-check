@@ -14,21 +14,55 @@
 
 """Public package interface for importtime-check."""
 
+from ._baseline import (
+    Baseline,
+    BaselineError,
+    EnvironmentIdentity,
+    SamplingPolicy,
+    TargetBaseline,
+    decode_baseline,
+    encode_baseline,
+    load_baseline,
+    save_baseline,
+)
 from ._measurement import ImportMeasurement, ImportMeasurementError, measure_import
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
+from ._regression import (
+    RegressionReport,
+    TargetRegressionResult,
+    check_baseline,
+    evaluate_baseline,
+    probe_environment,
+    record_baseline,
+)
 from ._sampling import ImportSampleSet, sample_import
 from ._version import __version__
 
 __all__ = (
+    "Baseline",
+    "BaselineError",
+    "EnvironmentIdentity",
     "ImportMeasurement",
     "ImportMeasurementError",
     "ImportSampleSet",
     "ImportTimeEvent",
     "ImportTimeParseError",
     "ImportTimeParseResult",
+    "RegressionReport",
+    "SamplingPolicy",
+    "TargetBaseline",
+    "TargetRegressionResult",
     "__version__",
+    "check_baseline",
+    "decode_baseline",
+    "encode_baseline",
+    "evaluate_baseline",
+    "load_baseline",
     "measure_import",
     "parse_importtime",
+    "probe_environment",
+    "record_baseline",
     "sample_import",
+    "save_baseline",
 )
