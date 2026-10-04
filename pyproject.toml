@@ -34,6 +34,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.scripts]
+importtime-check = "importtime_check._cli:main"
+
 [project.urls]
 Repository = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check"
 Issues = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check/issues"

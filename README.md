@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/actions/workflows/ci.yml/badge.svg)](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/actions/workflows/ci.yml)
 
-`importtime-check` is a planned CI gate for detecting regressions in Python
-import time. It will measure imports in clean subprocesses, compare results
-with deterministic baselines, and report actionable diagnostics when startup
+`importtime-check` is a CI gate for detecting regressions in Python import
+time. It measures imports in clean subprocesses, compares results with
+deterministic baselines, and reports actionable diagnostics when startup
 performance regresses.
 
 ## Project status
@@ -85,8 +85,22 @@ print(report.status)  # "pass" or "regression"
 
 Baselines are versioned JSON and require the same Python minor version,
 platform, machine, and profile at check time. Review baseline changes before
-using them as CI policy; matching identity does not eliminate host noise. The
-CLI and optional pytest adapter are still planned.
+using them as CI policy; matching identity does not eliminate host noise.
+
+The installed command supports measuring, recording, inspecting, and checking:
+
+```console
+importtime-check measure --module json
+importtime-check baseline record --output importtime-baseline.json --module json --max-increase-us 25 --max-increase-percent 10
+importtime-check baseline show --file importtime-baseline.json
+importtime-check check --baseline importtime-baseline.json
+importtime-check check --baseline importtime-baseline.json --format json
+```
+
+`check` exits `0` when all targets pass, `1` for a regression, and `2` for
+invalid input or an operational failure. Its JSON output is a stable schema-1
+document on standard output, including for exit codes `1` and `2` (except
+command-line syntax errors). The optional pytest adapter is still planned.
 
 ## Development
 
