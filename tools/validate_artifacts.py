@@ -50,6 +50,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0004-contributor-friendly-templates.md",
     "docs/design/0005-parser-and-domain-model-contract.md",
     "docs/design/0006-isolated-measurement-and-sampling.md",
+    "docs/design/0007-regression-and-integration-contract.md",
     "docs/design/README.md",
     "LICENSE",
     "NOTICE",
