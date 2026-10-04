@@ -255,7 +255,7 @@ def test_file_round_trip_refuses_overwrite_then_replaces(tmp_path: Path) -> None
     )
     save_baseline(path, changed, replace=True)
     assert load_baseline(path) == changed
-    assert not list(tmp_path.glob(".importtime-check-*.tmp"))
+    assert not list(tmp_path.glob(".importtime-check-*"))
 
 
 def test_missing_and_unreadable_paths(tmp_path: Path) -> None:
@@ -284,4 +284,4 @@ def test_atomic_failure_keeps_existing_file_and_cleans_temp(
         save_baseline(path, _baseline())
     assert found.value.kind == "io-error"
     assert path.read_bytes() == b"original"
-    assert not list(tmp_path.glob(".importtime-check-*.tmp"))
+    assert not list(tmp_path.glob(".importtime-check-*"))

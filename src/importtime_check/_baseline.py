@@ -291,29 +291,22 @@ def save_baseline(
     """Publish canonical bytes atomically, refusing implicit replacement."""
     destination = Path(path)
     payload = encode_baseline(baseline)
-    temporary: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            prefix=".importtime-check-",
-            suffix=".tmp",
-            dir=destination.parent,
-            delete=False,
-        ) as stream:
-            temporary = Path(stream.name)
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
-        if replace:
-            os.replace(temporary, destination)
-        else:
-            os.link(temporary, destination)
+        with tempfile.TemporaryDirectory(
+            prefix=".importtime-check-", dir=destination.parent
+        ) as directory:
+            temporary = Path(directory) / "baseline.json"
+            with temporary.open("wb") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if replace:
+                os.replace(temporary, destination)
+            else:
+                os.link(temporary, destination)
     except FileExistsError as error:
         raise BaselineError(
             "io-error", f"baseline already exists: {destination}"
         ) from error
     except OSError as error:
         raise BaselineError("io-error", f"cannot write baseline: {error}") from error
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
