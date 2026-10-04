@@ -25,6 +25,7 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 3. [0003: Contribution governance and release tracking](0003-contribution-governance-and-release-tracking.md)
 4. [0004: Contributor-friendly templates](0004-contributor-friendly-templates.md)
 5. [0005: Parser and domain model contract](0005-parser-and-domain-model-contract.md)
+6. [0006: Isolated measurement and sampling contract](0006-isolated-measurement-and-sampling.md)
 
 ## Lifecycle
 
