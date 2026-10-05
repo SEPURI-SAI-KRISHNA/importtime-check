@@ -33,6 +33,11 @@ import importtime_check
 
 assert importtime_check.__version__ == metadata.version("importtime-check")
 assert metadata.requires("importtime-check") is None
+assert any(
+    entry.name == "importtime-check"
+    and entry.value == "importtime_check._cli:main"
+    for entry in metadata.distribution("importtime-check").entry_points
+)
 """
 
 
@@ -43,6 +48,12 @@ class WheelSmokeError(RuntimeError):
 def _environment_python(environment: Path) -> Path:
     scripts_directory = "Scripts" if os.name == "nt" else "bin"
     executable = "python.exe" if os.name == "nt" else "python"
+    return environment / scripts_directory / executable
+
+
+def _environment_command(environment: Path) -> Path:
+    scripts_directory = "Scripts" if os.name == "nt" else "bin"
+    executable = "importtime-check.exe" if os.name == "nt" else "importtime-check"
     return environment / scripts_directory / executable
 
 
@@ -91,6 +102,63 @@ def smoke_wheel(dist_dir: Path) -> Path:
             )
         )
         _run((str(python), "-I", "-c", SMOKE_PROGRAM), cwd=temporary_path)
+        command_path = _environment_command(environment)
+        if not command_path.is_file():
+            raise WheelSmokeError("installed console command is missing")
+        command: tuple[str, ...] = (str(command_path),)
+        try:
+            _run((*command, "--help"), cwd=temporary_path)
+        except OSError as error:
+            if os.name != "nt" or getattr(error, "winerror", None) != 4551:
+                raise
+            # Application Control can block pip's launcher in temporary
+            # directories. Verify its metadata and file, then exercise the
+            # installed target through the clean wheel interpreter.
+            command = (
+                str(python),
+                "-I",
+                "-c",
+                "from importtime_check._cli import main; raise SystemExit(main())",
+            )
+            _run((*command, "--help"), cwd=temporary_path)
+        _run(
+            (
+                *command,
+                "measure",
+                "--module",
+                "json",
+                "--warmups",
+                "0",
+                "--samples",
+                "1",
+            ),
+            cwd=temporary_path,
+        )
+        baseline = temporary_path / "baseline.json"
+        _run(
+            (
+                *command,
+                "baseline",
+                "record",
+                "--output",
+                str(baseline),
+                "--module",
+                "json",
+                "--max-increase-us",
+                "100000000000000000000",
+                "--max-increase-percent",
+                "0",
+                "--warmups",
+                "0",
+                "--samples",
+                "1",
+            ),
+            cwd=temporary_path,
+        )
+        _run(
+            (*command, "check", "--baseline", str(baseline), "--format", "json"),
+            cwd=temporary_path,
+        )
     return wheel
 
 
