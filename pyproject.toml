@@ -37,6 +37,9 @@ classifiers = [
 [project.scripts]
 importtime-check = "importtime_check._cli:main"
 
+[project.optional-dependencies]
+pytest = ["pytest>=9.1.1"]
+
 [project.urls]
 Repository = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check"
 Issues = "https://github.com/SEPURI-SAI-KRISHNA/importtime-check/issues"

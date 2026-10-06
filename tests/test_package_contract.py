@@ -33,4 +33,11 @@ def test_distribution_metadata_preserves_packaging_contract() -> None:
 
     assert package_metadata["Requires-Python"] == ">=3.11"
     assert package_metadata["License-Expression"] == "Apache-2.0"
-    assert package_metadata.get_all("Requires-Dist") is None
+    assert package_metadata.get_all("Requires-Dist") == [
+        "pytest>=9.1.1; extra == 'pytest'"
+    ]
+    assert package_metadata.get_all("Provides-Extra") == ["pytest"]
+    assert not any(
+        entry.group == "pytest11"
+        for entry in metadata.distribution(DISTRIBUTION_NAME).entry_points
+    )

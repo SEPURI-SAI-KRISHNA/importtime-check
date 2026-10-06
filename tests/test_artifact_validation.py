@@ -43,6 +43,8 @@ def _metadata(*, runtime_dependency: bool = False) -> bytes:
         "License-Expression: Apache-2.0",
         "License-File: LICENSE",
         "License-File: NOTICE",
+        "Provides-Extra: pytest",
+        "Requires-Dist: pytest>=9.1.1; extra == 'pytest'",
     ]
     if runtime_dependency:
         fields.append("Requires-Dist: example")
@@ -55,6 +57,9 @@ def _pyproject() -> bytes:
 [project]
 name = "importtime-check"
 dependencies = []
+
+[project.optional-dependencies]
+pytest = ["pytest>=9.1.1"]
 
 [dependency-groups]
 test = ["pytest"]
@@ -144,7 +149,7 @@ def test_validate_artifacts_rejects_runtime_dependency(tmp_path: Path) -> None:
         wheel_runtime_dependency=True,
     )
 
-    with pytest.raises(ArtifactValidationError, match="Runtime dependency"):
+    with pytest.raises(ArtifactValidationError, match="Unexpected dependency"):
         validate_artifacts(dist_dir, project_root)
 
 

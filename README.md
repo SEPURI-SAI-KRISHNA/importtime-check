@@ -100,7 +100,27 @@ importtime-check check --baseline importtime-baseline.json --format json
 `check` exits `0` when all targets pass, `1` for a regression, and `2` for
 invalid input or an operational failure. Its JSON output is a stable schema-1
 document on standard output, including for exit codes `1` and `2` (except
-command-line syntax errors). The optional pytest adapter is still planned.
+command-line syntax errors).
+
+Pytest integration is optional and must be explicitly loaded. For a development
+checkout, install its extra and run against an approved baseline:
+
+```console
+python -m pip install --editable ".[pytest]"
+python -m pytest -p importtime_check.pytest_plugin --importtime-baseline importtime-baseline.json
+```
+
+The plugin accepts repeated `--importtime-module` flags to assert the exact
+target set and `--importtime-python`, `--importtime-timeout-seconds`,
+`--importtime-working-directory`, and `--importtime-profile` to select the
+runtime. The corresponding `pytest.ini` settings are `importtime_baseline`,
+`importtime_modules`, `importtime_python`, `importtime_timeout_seconds`,
+`importtime_working_directory`, and `importtime_profile`. Explicit command-line
+values replace settings; otherwise the baseline supplies targets and sampling.
+Invalid configuration exits pytest with code `4` before tests. After a passing
+test session, a regression or measurement error exits with code `1`; an
+existing test failure or interruption is preserved without measuring. The
+plugin never refreshes baselines and is not loaded automatically.
 
 ## Development
 
