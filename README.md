@@ -12,8 +12,7 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-Version `0.1.0a1` is the first public alpha. Once it appears on PyPI, install
-it with:
+Version `0.1.0a1` is the first public alpha. Install it with:
 
 ```console
 python -m pip install --pre importtime-check==0.1.0a1

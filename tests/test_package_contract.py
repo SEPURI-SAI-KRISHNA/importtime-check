@@ -33,6 +33,9 @@ def test_distribution_metadata_preserves_packaging_contract() -> None:
 
     assert package_metadata["Requires-Python"] == ">=3.11"
     assert package_metadata["License-Expression"] == "Apache-2.0"
+    classifiers = package_metadata.get_all("Classifier") or []
+    assert "Development Status :: 3 - Alpha" in classifiers
+    assert "Development Status :: 2 - Pre-Alpha" not in classifiers
     assert package_metadata.get_all("Requires-Dist") == [
         "pytest>=9.1.1; extra == 'pytest'"
     ]
