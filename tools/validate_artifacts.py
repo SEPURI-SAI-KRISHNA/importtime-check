@@ -40,6 +40,7 @@ EXPECTED_PACKAGE_FILES = (
     "_measurement.py",
     "_model.py",
     "_parser.py",
+    "pytest_plugin.py",
     "_regression.py",
     "_report.py",
     "_sampling.py",
@@ -67,6 +68,7 @@ EXPECTED_SDIST_FILES = (
     "src/importtime_check/_measurement.py",
     "src/importtime_check/_model.py",
     "src/importtime_check/_parser.py",
+    "src/importtime_check/pytest_plugin.py",
     "src/importtime_check/_regression.py",
     "src/importtime_check/_report.py",
     "src/importtime_check/_sampling.py",
@@ -78,6 +80,7 @@ EXPECTED_SDIST_FILES = (
     "tests/test_measurement.py",
     "tests/test_package_contract.py",
     "tests/test_parser.py",
+    "tests/test_pytest_plugin.py",
     "tests/test_regression.py",
     "tests/test_report.py",
     "tests/test_sampling.py",
@@ -137,12 +140,13 @@ def _validate_metadata(raw: bytes, source: str, expected_version: str) -> None:
         f"Bad License-File values in {source}",
     )
     _require(
-        not _metadata_values(metadata, "Requires-Dist"),
-        f"Runtime dependency found in {source}",
+        _metadata_values(metadata, "Requires-Dist")
+        == ("pytest>=9.1.1; extra == 'pytest'",),
+        f"Unexpected dependency metadata in {source}",
     )
     _require(
-        not _metadata_values(metadata, "Provides-Extra"),
-        f"Published extra found in {source}",
+        _metadata_values(metadata, "Provides-Extra") == ("pytest",),
+        f"Unexpected published extra in {source}",
     )
     header_names = {name.casefold() for name in metadata}
     _require(
@@ -205,8 +209,8 @@ def _validate_dependency_groups(raw: bytes, source: str) -> None:
     project = cast(dict[str, object], project_object)
     _require(project.get("dependencies") == [], f"{source} has runtime dependencies")
     _require(
-        "optional-dependencies" not in project,
-        f"{source} publishes development tools as extras",
+        project.get("optional-dependencies") == {"pytest": ["pytest>=9.1.1"]},
+        f"{source} has unexpected optional dependencies",
     )
 
 

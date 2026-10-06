@@ -29,10 +29,14 @@ from tools.validate_artifacts import ArtifactValidationError, discover_artifacts
 
 SMOKE_PROGRAM = """
 from importlib import metadata
+from importlib import util
+import sys
 import importtime_check
 
 assert importtime_check.__version__ == metadata.version("importtime-check")
-assert metadata.requires("importtime-check") is None
+assert metadata.requires("importtime-check") == ["pytest>=9.1.1; extra == 'pytest'"]
+assert util.find_spec("pytest") is None
+assert "pytest" not in sys.modules
 assert any(
     entry.name == "importtime-check"
     and entry.value == "importtime_check._cli:main"
