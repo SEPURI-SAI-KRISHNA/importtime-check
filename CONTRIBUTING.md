@@ -45,6 +45,10 @@ python -m mypy src tests tools
 python -m pytest
 ```
 
+CI additionally checks each pull-request commit for a matching DCO sign-off,
+reviews changed dependencies, and scans Python source with CodeQL. These
+remote checks are included in the aggregate required `CI` result.
+
 When packaging or artifact behavior changes, also run:
 
 ```console
@@ -107,7 +111,8 @@ and migration impact in the pull request, or write `None` when it is not
 applicable. Maintainers apply a generated-release-note category label to
 user-visible work and `skip-release-notes` to internal-only changes.
 
-GitHub generated release notes group merged pull requests by labels. The
+The first alpha has curated notes in `docs/releases/`; the generated release
+note configuration can group later merged pull requests by labels. The
 project does not require every pull request to edit one shared `CHANGELOG.md`;
 that produces noise and merge conflicts for non-user-facing work. A curated
 changelog or per-pull-request news fragments may be added through a dedicated

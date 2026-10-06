@@ -119,6 +119,68 @@ jobs:
       - name: Exercise explicitly loaded plugin
         run: python -m pytest tests/test_pytest_plugin.py -m integration -o addopts= -q
 
+  dco:
+    name: DCO
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check commit sign-offs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+        run: python -m tools.check_dco --repository "$REPOSITORY" --pull-request "$PULL_REQUEST"
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review changed dependencies
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
+        with:
+          fail-on-severity: moderate
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          languages: python
+          build-mode: none
+
+      - name: Analyze source
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+
   package:
     name: Package
     runs-on: ubuntu-latest
@@ -154,7 +216,7 @@ jobs:
         run: python -m tools.smoke_wheel .tmp/dist
 
       - name: Upload validated artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: importtime-check-distributions
           path: .tmp/dist/
@@ -168,6 +230,9 @@ jobs:
       - quality
       - tests
       - pytest-integration
+      - dco
+      - dependency-review
+      - codeql
       - package
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -178,8 +243,20 @@ jobs:
           QUALITY_RESULT: ${{ needs.quality.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
           PYTEST_INTEGRATION_RESULT: ${{ needs['pytest-integration'].result }}
+          DCO_RESULT: ${{ needs.dco.result }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
+          CODEQL_RESULT: ${{ needs.codeql.result }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           test "$QUALITY_RESULT" = success
           test "$TESTS_RESULT" = success
           test "$PYTEST_INTEGRATION_RESULT" = success
+          test "$CODEQL_RESULT" = success
           test "$PACKAGE_RESULT" = success
+          if [ "$EVENT_NAME" = pull_request ]; then
+            test "$DCO_RESULT" = success
+            test "$DEPENDENCY_REVIEW_RESULT" = success
+          else
+            test "$DCO_RESULT" = skipped
+            test "$DEPENDENCY_REVIEW_RESULT" = skipped
+          fi
