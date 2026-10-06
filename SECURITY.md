@@ -2,14 +2,16 @@
 
 ## Supported versions
 
-`importtime-check` is pre-alpha and has no published release. Security fixes are
-currently made on the `main` branch on a best-effort basis. This table will be
-replaced with a release support policy before the first stable release.
+`importtime-check` is pre-alpha. Security fixes are made on `main` on a
+best-effort basis. After the first alpha is published, only the latest alpha
+is considered for fixes; older prereleases do not receive backports. This
+policy will be reviewed before a stable release.
 
 | Version | Supported |
 | --- | --- |
 | Unreleased `main` | Best effort |
-| Published releases | None yet |
+| Latest published alpha, once available | Best effort |
+| Older prereleases | Unsupported |
 
 ## Reporting a vulnerability
 

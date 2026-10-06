@@ -9,10 +9,20 @@ performance regresses.
 
 ## Project status
 
-This project is in early development and has not been released. Installation
-instructions and a stable public API are not available yet.
+This project is in early alpha development; its public API is not yet a stable
+compatibility commitment.
 
-The first planned release is `0.1.0a1`. Python 3.11 or newer will be required.
+Version `0.1.0a1` is the first public alpha. Once it appears on PyPI, install
+it with:
+
+```console
+python -m pip install --pre importtime-check==0.1.0a1
+```
+
+CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
+or newer; newer interpreter versions are not yet in the tested support matrix.
+The core install has no runtime dependencies. Pytest is available only through
+the optional `pytest` extra.
 
 The numeric stderr produced by CPython's `-X importtime` option can already be
 parsed without executing a subprocess:
@@ -33,7 +43,7 @@ assert (event.module, event.self_us, event.cumulative_us, event.depth) == (
 )
 ```
 
-This API remains pre-alpha and may change before the first stable release.
+This API remains an alpha API and may change before the first stable release.
 
 To measure one installed module in a fresh CPython process:
 
@@ -103,7 +113,9 @@ document on standard output, including for exit codes `1` and `2` (except
 command-line syntax errors).
 
 Pytest integration is optional and must be explicitly loaded. For a development
-checkout, install its extra and run against an approved baseline:
+checkout, install its extra and run against an approved baseline. After
+publication, install `"importtime-check[pytest]==0.1.0a1"` instead of the
+editable checkout:
 
 ```console
 python -m pip install --editable ".[pytest]"
@@ -152,21 +164,25 @@ python -m tools.validate_artifacts .tmp/dist
 python -m tools.smoke_wheel .tmp/dist
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete contribution workflow
-and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/CONTRIBUTING.md)
+for the complete contribution workflow and
+[SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
+for private vulnerability reporting.
+The [first alpha release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a1.md) summarize its
+capabilities, compatibility, and limitations.
 
-## Planned focus
+## Current limits
 
-- Repeatable import-time measurements with noise control.
-- Deterministic, reviewable baseline files.
-- Absolute and relative regression thresholds for CI.
-- Import-chain diagnostics for finding newly introduced heavy imports.
-- A standard-library-only core with pytest support as an optional integration.
+Measurements are sensitive to host load, dependency changes, and interpreter
+configuration. Compare results only in controlled environments with reviewed
+baselines. The tool reports CPython's import-time diagnostics, not whole-process
+startup time, and it does not yet identify the cause of a regression automatically.
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
+Licensed under the Apache License, Version 2.0. See
+[LICENSE](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/LICENSE)
+and [NOTICE](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/NOTICE).
 
 This is an independent open-source project. It is not affiliated with or
 endorsed by the Apache Software Foundation.
