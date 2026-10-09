@@ -66,6 +66,12 @@ documentation and default-branch CI remain healthy. Remove the one-time
 `PYPI_RELEASE_APPROVED` variable after successful publication. Only then
 close the release issue and milestone.
 
+For `0.1.0a2`, include a reviewed `baseline refresh --replace` round trip,
+field-level environment and target-set mismatch diagnostics, and the pinned
+CI baseline example in post-publication checks. Existing schema-1 baseline
+files should load without migration; do not refresh an approved baseline just
+to prove compatibility.
+
 If PyPI or GitHub disagrees with the reviewed artifacts, stop. Published PyPI
 files cannot be replaced in place. Document the defect, yank only if justified,
 open an issue, and prepare a new version; never delete or overwrite a file to

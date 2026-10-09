@@ -8,13 +8,16 @@ files are [pinned requirements](../examples/requirements-importtime.txt), a
 project as described below; do not add these example workflows to this
 repository's `.github/workflows/` directory.
 
-The example pins `importtime-check==0.1.0a1`, `packaging==26.3`, CPython 3.11,
+The example pins `importtime-check==0.1.0a2`, `packaging==26.3`, CPython 3.11,
 the `ubuntu-24.04` runner label, and the action commits. It needs no PyPI
 credentials. It is a starting policy, **not** evidence that every GitHub-hosted
 runner has equivalent hardware or load. For a dependable, tighter performance
 gate, use a controlled runner class or image and investigate ordinary variance
 before choosing allowances. A matching five-field identity cannot detect
 dependency changes, Python patch changes, CPU contention, or host differences.
+Before `0.1.0a2` reaches PyPI, use the published `0.1.0a1` pin for the
+original record and check example, without the new refresh and diagnostic
+features.
 
 ## Bootstrap the policy
 
@@ -61,7 +64,7 @@ standard-library target is enough; **do not commit this local baseline for a
 different CI runner**:
 
 ```console
-python -m pip install --pre importtime-check==0.1.0a1
+python -m pip install --pre importtime-check==0.1.0a2
 importtime-check baseline record --output importtime-local.json --module json --warmups 0 --samples 1 --max-increase-us 1000000 --max-increase-percent 100 --profile local-smoke
 importtime-check baseline show --file importtime-local.json
 importtime-check check --baseline importtime-local.json --module json --profile local-smoke
@@ -79,20 +82,20 @@ importtime-check check --baseline importtime-local.json --module json --profile 
   class, architecture, and `--profile` against the baseline. For a target-set
   mismatch, compare explicit `--module` selections with the baseline targets.
   `baseline show --file ci/importtime-baseline.json` displays the stored
-  identity and policy. The pending `0.1.0a2` diagnostics name differing
-  identity fields (showing only safe Python major.minor values) and sorted
-  missing/stale targets; `0.1.0a1` has less detailed messages. Correct a
+  identity and policy. In `0.1.0a2`, diagnostics name differing identity
+  fields (showing only safe Python major.minor values) and sorted
+  missing/stale targets. Correct a
   configuration mistake; if the change is intentional, record and review a
   new baseline in the new environment. Do not compare an unrelated machine
   merely because the command accepts it.
 - A change only to observed medians can be proposed by
-  `baseline refresh --file ci/importtime-baseline.json --replace` **after**
-  upgrading to a release that includes refresh. It retains target names,
+  `baseline refresh --file ci/importtime-baseline.json --replace` in
+  `0.1.0a2`. It retains target names,
   identity, sampling, and per-target allowances; inspect the file diff before
   accepting it. A target, identity, sampling, or allowance change requires
   `baseline record --replace` or an explicitly reviewed policy edit. The
-  published `0.1.0a1` pin in this example does **not** have `refresh` or the
-  newer field-level mismatch messages; those are planned for `0.1.0a2`.
+  first alpha (`0.1.0a1`) does **not** have `refresh` or the newer field-level
+  mismatch messages.
 
 The optional pytest adapter is another way to run the same gate. Pin the
 matching extra and pytest version in the lock file, then explicitly load
