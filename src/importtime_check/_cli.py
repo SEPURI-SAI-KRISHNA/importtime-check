@@ -17,7 +17,10 @@
 from __future__ import annotations
 
 import argparse
+import os
+import stat
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -26,6 +29,7 @@ from ._baseline import (
     SamplingPolicy,
     _nonnegative_int,
     _percent,
+    decode_baseline,
     encode_baseline,
     load_baseline,
     save_baseline,
@@ -37,7 +41,13 @@ from ._measurement import (
     _validate_module_name,
     _working_directory,
 )
-from ._regression import check_baseline, probe_environment, record_baseline
+from ._regression import (
+    _require_same_environment,
+    check_baseline,
+    probe_environment,
+    record_baseline,
+    refresh_baseline,
+)
 from ._report import error_json, report_json, report_text
 from ._sampling import sample_import
 
@@ -66,7 +76,9 @@ def _parser() -> argparse.ArgumentParser:
     measure.add_argument("--samples", type=int, default=5)
     _add_runtime(measure)
 
-    baseline = commands.add_parser("baseline", help="record or inspect a baseline")
+    baseline = commands.add_parser(
+        "baseline", help="record, refresh, or inspect a baseline"
+    )
     baseline_commands = baseline.add_subparsers(dest="baseline_command", required=True)
     record = baseline_commands.add_parser("record", help="record a baseline file")
     record.add_argument("--output", required=True)
@@ -80,6 +92,12 @@ def _parser() -> argparse.ArgumentParser:
     show = baseline_commands.add_parser("show", help="inspect a baseline file")
     show.add_argument("--file", required=True)
     show.add_argument("--format", choices=("text", "json"), default="text")
+    refresh = baseline_commands.add_parser(
+        "refresh", help="update timings without resetting baseline policy"
+    )
+    refresh.add_argument("--file", required=True)
+    refresh.add_argument("--replace", action="store_true")
+    _add_runtime(refresh, profile=True)
 
     check = commands.add_parser("check", help="compare current imports to a baseline")
     check.add_argument("--baseline", required=True)
@@ -200,6 +218,81 @@ def _show(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _read_refresh_bytes(path: Path, *, initial: bool) -> bytes:
+    """Read only an existing regular file, detecting a changed destination."""
+    changed = "baseline changed during refresh"
+    try:
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise BaselineError(
+                "io-error",
+                "baseline must be a regular non-symlink file" if initial else changed,
+            )
+        return path.read_bytes()
+    except FileNotFoundError as error:
+        if initial:
+            raise BaselineError(
+                "baseline-missing", "baseline file not found"
+            ) from error
+        raise BaselineError("io-error", changed) from error
+    except OSError as error:
+        reason = "cannot read baseline" if initial else changed
+        raise BaselineError("io-error", reason) from error
+
+
+def _commit_refresh(path: Path, original: bytes, updated: bytes) -> None:
+    """Commit complete bytes only if the original file is still present."""
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix=".importtime-check-", dir=path.parent, ignore_cleanup_errors=True
+        ) as directory:
+            temporary = Path(directory) / "baseline.json"
+            with temporary.open("wb") as stream:
+                stream.write(updated)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if _read_refresh_bytes(path, initial=False) != original:
+                raise BaselineError("io-error", "baseline changed during refresh")
+            os.replace(temporary, path)
+    except OSError as error:
+        raise BaselineError("io-error", "cannot write baseline") from error
+
+
+def _refresh(arguments: argparse.Namespace) -> int:
+    if not arguments.replace:
+        raise ValueError("baseline refresh requires --replace")
+    profile = _profile(arguments.profile)
+    interpreter, timeout, directory = _runtime(arguments)
+    path = Path(arguments.file)
+    original = _read_refresh_bytes(path, initial=True)
+    baseline = decode_baseline(original)
+    environment = probe_environment(
+        python_executable=interpreter,
+        timeout_seconds=timeout,
+        working_directory=directory,
+        profile=profile,
+    )
+    _require_same_environment(baseline, environment)
+    observations = {
+        module: sample_import(
+            module,
+            python_executable=interpreter,
+            timeout_seconds=timeout,
+            working_directory=directory,
+            warmups=baseline.sampling.warmups,
+            samples=baseline.sampling.samples,
+        )
+        for module in baseline.targets
+    }
+    updated = refresh_baseline(baseline, observations, environment)
+    _commit_refresh(path, original, encode_baseline(updated))
+    for module in baseline.targets:
+        before = baseline.targets[module].baseline_cumulative_us
+        after = updated.targets[module].baseline_cumulative_us
+        print(f"{module}: {before} -> {after} us ({after - before:+d} us)")
+    print("Target names, sampling, identity, and allowances retained; review the file.")
+    return 0
+
+
 def _check(arguments: argparse.Namespace) -> int:
     modules = _modules(arguments.module) if arguments.module is not None else None
     profile = _profile(arguments.profile)
@@ -227,11 +320,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "measure":
             return _measure(arguments)
         if arguments.command == "baseline":
-            return (
-                _record(arguments)
-                if arguments.baseline_command == "record"
-                else _show(arguments)
-            )
+            if arguments.baseline_command == "record":
+                return _record(arguments)
+            if arguments.baseline_command == "show":
+                return _show(arguments)
+            return _refresh(arguments)
         return _check(arguments)
     except (BaselineError, ImportMeasurementError) as error:
         if arguments.debug:

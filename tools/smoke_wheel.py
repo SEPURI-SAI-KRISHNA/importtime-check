@@ -37,6 +37,7 @@ assert importtime_check.__version__ == metadata.version("importtime-check")
 assert metadata.requires("importtime-check") == ["pytest>=9.1.1; extra == 'pytest'"]
 assert util.find_spec("pytest") is None
 assert "pytest" not in sys.modules
+assert callable(importtime_check.refresh_baseline)
 assert any(
     entry.name == "importtime-check"
     and entry.value == "importtime_check._cli:main"
@@ -156,6 +157,17 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 "0",
                 "--samples",
                 "1",
+            ),
+            cwd=temporary_path,
+        )
+        _run(
+            (
+                *command,
+                "baseline",
+                "refresh",
+                "--file",
+                str(baseline),
+                "--replace",
             ),
             cwd=temporary_path,
         )

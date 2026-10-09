@@ -174,6 +174,7 @@ def test_public_exports_are_exact() -> None:
         "parse_importtime",
         "probe_environment",
         "record_baseline",
+        "refresh_baseline",
         "sample_import",
         "save_baseline",
     )

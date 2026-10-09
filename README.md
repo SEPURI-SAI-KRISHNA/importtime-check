@@ -106,6 +106,23 @@ importtime-check check --baseline importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json --format json
 ```
 
+On the development branch (planned for `0.1.0a2`, **not** available in the
+published `0.1.0a1`), refresh the recorded medians after an intentional change:
+
+```console
+importtime-check baseline refresh --file importtime-baseline.json --replace
+```
+
+Refresh measures the baseline's existing targets with its stored sampling
+policy and retains each target's approved allowances. It rejects a different
+Python minor version, platform, machine, or profile; changing those or the
+target set requires a deliberately re-recorded and reviewed baseline. Review
+the resulting file diff before accepting it in CI. Refresh never runs from
+`check` or the pytest plugin. Library callers can use
+`refresh_baseline(baseline, observations, environment)` to obtain a new
+`Baseline` without writing a file; saving it still requires an explicit
+`save_baseline(..., replace=True)` call.
+
 `check` exits `0` when all targets pass, `1` for a regression, and `2` for
 invalid input or an operational failure. Its JSON output is a stable schema-1
 document on standard output, including for exit codes `1` and `2` (except

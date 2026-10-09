@@ -124,6 +124,15 @@ def _target_set(baseline: Baseline, modules: Sequence[str]) -> tuple[str, ...]:
     return tuple(sorted(current))
 
 
+def _require_same_environment(
+    baseline: Baseline, environment: EnvironmentIdentity
+) -> None:
+    if environment != baseline.environment:
+        raise BaselineError(
+            "environment-mismatch", "current environment differs from baseline"
+        )
+
+
 def record_baseline(
     observations: Mapping[str, ImportSampleSet],
     environment: EnvironmentIdentity,
@@ -156,16 +165,50 @@ def record_baseline(
     return Baseline(environment, SamplingPolicy(warmups, samples), targets)
 
 
+def refresh_baseline(
+    baseline: Baseline,
+    observations: Mapping[str, ImportSampleSet],
+    environment: EnvironmentIdentity,
+) -> Baseline:
+    """Replace only recorded medians in a complete, comparable baseline."""
+    if not isinstance(baseline, Baseline):
+        raise ValueError("baseline must be a Baseline")
+    if not isinstance(observations, Mapping):
+        raise ValueError("observations must be a mapping")
+    _require_same_environment(baseline, environment)
+    modules = _target_set(baseline, tuple(observations))
+    interpreters: set[str] = set()
+    targets: dict[str, TargetBaseline] = {}
+    for module in modules:
+        sample_set = observations[module]
+        if not isinstance(sample_set, ImportSampleSet) or sample_set.module != module:
+            raise ValueError("observations must match their module names")
+        if (
+            len(sample_set.warmups) != baseline.sampling.warmups
+            or len(sample_set.samples) != baseline.sampling.samples
+        ):
+            raise ValueError("observations must match baseline sampling settings")
+        interpreters.add(sample_set.python_executable)
+        old = baseline.targets[module]
+        targets[module] = TargetBaseline(
+            sample_set.median_cumulative_us,
+            old.max_increase_us,
+            old.max_increase_percent,
+        )
+    if len(interpreters) != 1:
+        raise BaselineError(
+            "environment-mismatch", "samples use different interpreters"
+        )
+    return Baseline(baseline.environment, baseline.sampling, targets)
+
+
 def evaluate_baseline(
     baseline: Baseline,
     observations: Mapping[str, ImportSampleSet],
     environment: EnvironmentIdentity,
 ) -> RegressionReport:
     """Make an exact, side-effect-free decision from complete sample sets."""
-    if environment != baseline.environment:
-        raise BaselineError(
-            "environment-mismatch", "current environment differs from baseline"
-        )
+    _require_same_environment(baseline, environment)
     modules = _target_set(baseline, tuple(observations))
     results: list[TargetRegressionResult] = []
     interpreters: set[str] = set()
@@ -291,10 +334,7 @@ def check_baseline(
         working_directory=working_directory,
         profile=profile,
     )
-    if environment != baseline.environment:
-        raise BaselineError(
-            "environment-mismatch", "current environment differs from baseline"
-        )
+    _require_same_environment(baseline, environment)
     observations = {
         module: sample_import(
             module,

@@ -35,6 +35,7 @@ from ._regression import (
     evaluate_baseline,
     probe_environment,
     record_baseline,
+    refresh_baseline,
 )
 from ._sampling import ImportSampleSet, sample_import
 from ._version import __version__
@@ -63,6 +64,7 @@ __all__ = (
     "parse_importtime",
     "probe_environment",
     "record_baseline",
+    "refresh_baseline",
     "sample_import",
     "save_baseline",
 )
