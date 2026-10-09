@@ -27,6 +27,7 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 5. [0005: Parser and domain model contract](0005-parser-and-domain-model-contract.md)
 6. [0006: Isolated measurement and sampling contract](0006-isolated-measurement-and-sampling.md)
 7. [0007: Baselines, regression decisions, and integration contract](0007-regression-and-integration-contract.md)
+8. [0008: Safe baseline refresh and comparison diagnostics](0008-safe-baseline-refresh-and-diagnostics.md)
 
 ## Lifecycle
 
