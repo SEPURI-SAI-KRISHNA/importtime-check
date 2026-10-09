@@ -17,15 +17,19 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 import sys
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
 import importtime_check._cli as cli
 import importtime_check._regression as regression
 from importtime_check import (
+    Baseline,
     BaselineError,
     EnvironmentIdentity,
     ImportMeasurement,
@@ -33,6 +37,11 @@ from importtime_check import (
     ImportSampleSet,
     ImportTimeEvent,
     ImportTimeParseResult,
+    SamplingPolicy,
+    TargetBaseline,
+    decode_baseline,
+    encode_baseline,
+    save_baseline,
 )
 
 ENV = EnvironmentIdentity("cpython", "3.11", "win32", "amd64")
@@ -72,6 +81,268 @@ def _record(path: Path, *extra: str) -> list[str]:
         "10",
         *extra,
     ]
+
+
+def _refresh(path: Path, *extra: str) -> list[str]:
+    return ["baseline", "refresh", "--file", str(path), "--replace", *extra]
+
+
+def _refresh_source(path: Path) -> Baseline:
+    baseline = Baseline(
+        ENV,
+        SamplingPolicy(1, 2),
+        {
+            "zeta": TargetBaseline(100, 25, "2.5"),
+            "json": TargetBaseline(130, 5, "10"),
+        },
+    )
+    save_baseline(path, baseline)
+    return baseline
+
+
+def test_refresh_preserves_reviewed_policy_and_reports_sorted_changes(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    before = _refresh_source(path)
+    calls: list[tuple[str, int, int, str]] = []
+
+    def sample(module: str, **options: Any) -> ImportSampleSet:
+        calls.append(
+            (
+                module,
+                options["warmups"],
+                options["samples"],
+                options["python_executable"],
+            )
+        )
+        return _sample(module, **options)
+
+    monkeypatch.setattr(cli, "sample_import", sample)
+    assert cli.main(_refresh(path, "--working-directory", str(tmp_path))) == 0
+    after = decode_baseline(path.read_bytes())
+    assert path.read_bytes() == encode_baseline(after)
+    assert after.environment == before.environment
+    assert after.sampling == before.sampling
+    assert tuple(after.targets) == ("json", "zeta")
+    assert after.targets["json"] == TargetBaseline(150, 5, "10")
+    assert after.targets["zeta"] == TargetBaseline(90, 25, "2.5")
+    assert calls == [
+        ("json", 1, 2, str(Path(sys.executable).resolve())),
+        ("zeta", 1, 2, str(Path(sys.executable).resolve())),
+    ]
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert output.out.splitlines() == [
+        "json: 130 -> 150 us (+20 us)",
+        "zeta: 100 -> 90 us (-10 us)",
+        "Target names, sampling, identity, and allowances retained; review the file.",
+    ]
+
+
+def test_refresh_requires_explicit_replace_before_probe(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+    original = path.read_bytes()
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("must not probe or measure")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    monkeypatch.setattr(cli, "sample_import", forbidden)
+    with pytest.raises(SystemExit) as error:
+        cli.main(["baseline", "refresh", "--file", str(path)])
+    assert error.value.code == 2
+    assert "requires --replace" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as option:
+        cli.main(_refresh(path, "--module", "json"))
+    assert option.value.code == 2
+    capsys.readouterr()
+    assert path.read_bytes() == original
+
+
+def test_refresh_rejects_missing_invalid_and_nonregular_files(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    missing = tmp_path / "missing.json"
+    assert cli.main(_refresh(missing)) == 2
+    assert "baseline file not found" in capsys.readouterr().err
+    invalid = tmp_path / "invalid.json"
+    invalid.write_bytes(b"{")
+    assert cli.main(_refresh(invalid)) == 2
+    assert "importtime-check:" in capsys.readouterr().err
+    assert invalid.read_bytes() == b"{"
+    assert cli.main(_refresh(tmp_path)) == 2
+    assert "regular non-symlink" in capsys.readouterr().err
+
+
+def test_refresh_rejects_environment_before_target_imports(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+    original = path.read_bytes()
+    monkeypatch.setattr(
+        cli,
+        "probe_environment",
+        lambda **options: EnvironmentIdentity("cpython", "3.12", "win32", "amd64"),
+    )
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("target import must not run")
+
+    monkeypatch.setattr(cli, "sample_import", forbidden)
+    assert cli.main(_refresh(path)) == 2
+    assert "environment differs" in capsys.readouterr().err
+    assert path.read_bytes() == original
+
+
+def test_refresh_failure_or_interrupt_keeps_original_bytes(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+    original = path.read_bytes()
+    error = ImportMeasurementError(
+        module="zeta",
+        kind="timeout",
+        python_executable=str(Path(sys.executable).resolve()),
+        reason="child timeout",
+    )
+
+    def partial(module: str, **options: Any) -> ImportSampleSet:
+        if module == "zeta":
+            raise error
+        return _sample(module, **options)
+
+    monkeypatch.setattr(cli, "sample_import", partial)
+    assert cli.main(_refresh(path)) == 2
+    assert "timeout" in capsys.readouterr().err
+    assert path.read_bytes() == original
+
+    def interrupted(*args: Any, **kwargs: Any) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "sample_import", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        cli.main(_refresh(path))
+    assert path.read_bytes() == original
+
+
+def test_refresh_detects_external_edit_or_removal_before_commit(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    before = _refresh_source(path)
+    external = b"external change"
+
+    def edit(module: str, **options: Any) -> ImportSampleSet:
+        path.write_bytes(external)
+        return _sample(module, **options)
+
+    monkeypatch.setattr(cli, "sample_import", edit)
+    assert cli.main(_refresh(path)) == 2
+    assert "baseline changed during refresh" in capsys.readouterr().err
+    assert path.read_bytes() == external
+    assert not list(tmp_path.glob(".importtime-check-*"))
+
+    path.write_bytes(encode_baseline(before))
+
+    def remove(module: str, **options: Any) -> ImportSampleSet:
+        if path.exists():
+            path.unlink()
+        return _sample(module, **options)
+
+    monkeypatch.setattr(cli, "sample_import", remove)
+    assert cli.main(_refresh(path)) == 2
+    assert "baseline changed during refresh" in capsys.readouterr().err
+    assert not path.exists()
+    assert not list(tmp_path.glob(".importtime-check-*"))
+
+
+def test_refresh_replace_failure_keeps_file_and_cleans_temporary(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+    original = path.read_bytes()
+
+    def fail_replace(*args: Any, **kwargs: Any) -> None:
+        raise OSError("replacement unavailable")
+
+    monkeypatch.setattr(os, "replace", fail_replace)
+    assert cli.main(_refresh(path)) == 2
+    assert "cannot write baseline" in capsys.readouterr().err
+    assert path.read_bytes() == original
+    assert not list(tmp_path.glob(".importtime-check-*"))
+
+
+def test_refresh_temporary_write_failure_keeps_original(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+    original = path.read_bytes()
+
+    def fail_sync(file_descriptor: int) -> None:
+        raise OSError("sync unavailable")
+
+    monkeypatch.setattr(os, "fsync", fail_sync)
+    assert cli.main(_refresh(path)) == 2
+    assert "cannot write baseline" in capsys.readouterr().err
+    assert path.read_bytes() == original
+    assert not list(tmp_path.glob(".importtime-check-*"))
+
+
+def test_refresh_file_reader_classifies_missing_and_symlink_changes(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing.json"
+    with pytest.raises(BaselineError) as changed:
+        cli._read_refresh_bytes(missing, initial=False)
+    assert changed.value.kind == "io-error"
+    fake = cast(
+        Any,
+        SimpleNamespace(lstat=lambda: SimpleNamespace(st_mode=stat.S_IFLNK)),
+    )
+    with pytest.raises(BaselineError, match="non-symlink") as link:
+        cli._read_refresh_bytes(fake, initial=True)
+    assert link.value.kind == "io-error"
+    with pytest.raises(BaselineError, match="changed during refresh"):
+        cli._read_refresh_bytes(fake, initial=False)
+    unreadable = cast(
+        Any,
+        SimpleNamespace(lstat=lambda: (_ for _ in ()).throw(PermissionError("denied"))),
+    )
+    with pytest.raises(BaselineError, match="cannot read baseline"):
+        cli._read_refresh_bytes(unreadable, initial=True)
+    with pytest.raises(BaselineError, match="changed during refresh"):
+        cli._read_refresh_bytes(unreadable, initial=False)
 
 
 def test_measure_and_record_show_workflows(

@@ -43,6 +43,7 @@ from importtime_check import (
     evaluate_baseline,
     probe_environment,
     record_baseline,
+    refresh_baseline,
     sample_import,
 )
 
@@ -234,6 +235,67 @@ def test_record_rejects_mixed_settings_and_interpreters() -> None:
             ENV,
             max_increase_us=0,
             max_increase_percent="0",
+        )
+
+
+def test_refresh_preserves_policy_and_changes_only_observed_medians() -> None:
+    baseline = Baseline(
+        ENV,
+        SamplingPolicy(1, 3),
+        {
+            "zeta": TargetBaseline(100, 5, "10"),
+            "alpha": TargetBaseline(200, 25, "2.5"),
+        },
+    )
+    refreshed = refresh_baseline(
+        baseline,
+        {
+            "zeta": _set("zeta", (110, 120, 115), warmups=(900,)),
+            "alpha": _set("alpha", (190, 180, 200), warmups=(800,)),
+        },
+        ENV,
+    )
+    assert refreshed is not baseline
+    assert refreshed.environment is baseline.environment
+    assert refreshed.sampling is baseline.sampling
+    assert tuple(refreshed.targets) == ("alpha", "zeta")
+    assert refreshed.targets["alpha"] == TargetBaseline(190, 25, "2.5")
+    assert refreshed.targets["zeta"] == TargetBaseline(115, 5, "10")
+    assert baseline.targets["alpha"].baseline_cumulative_us == 200
+    assert baseline.targets["zeta"].baseline_cumulative_us == 100
+
+
+def test_refresh_rejects_noncomparable_or_incomplete_observations() -> None:
+    baseline = _baseline(modules=("a", "b"))
+    with pytest.raises(ValueError, match="Baseline"):
+        refresh_baseline(cast(Any, None), {}, ENV)
+    with pytest.raises(ValueError, match="mapping"):
+        refresh_baseline(baseline, cast(Any, None), ENV)
+    with pytest.raises(BaselineError) as identity:
+        refresh_baseline(
+            baseline,
+            {"a": _set("a", (1,)), "b": _set("b", (2,))},
+            EnvironmentIdentity("cpython", "3.12", "win32", "amd64"),
+        )
+    assert identity.value.kind == "environment-mismatch"
+    with pytest.raises(BaselineError) as targets:
+        refresh_baseline(baseline, {"a": _set("a", (1,))}, ENV)
+    assert targets.value.kind == "target-set-mismatch"
+    with pytest.raises(BaselineError) as extra:
+        refresh_baseline(baseline, {"a": _set("a", (1,)), "c": _set("c", (2,))}, ENV)
+    assert extra.value.missing == ("c",)
+    assert extra.value.stale == ("b",)
+    with pytest.raises(ValueError, match="module names"):
+        refresh_baseline(baseline, {"a": cast(Any, "bad"), "b": _set("b", (2,))}, ENV)
+    with pytest.raises(ValueError, match="module names"):
+        refresh_baseline(baseline, {"a": _set("b", (1,)), "b": _set("b", (2,))}, ENV)
+    with pytest.raises(ValueError, match="sampling settings"):
+        refresh_baseline(baseline, {"a": _set("a", (1, 2)), "b": _set("b", (2,))}, ENV)
+    with pytest.raises(BaselineError, match="different interpreters"):
+        refresh_baseline(
+            baseline,
+            {"a": _set("a", (1,)), "b": _set("b", (2,), interpreter=str(Path.cwd()))},
+            ENV,
         )
 
 
