@@ -128,6 +128,15 @@ invalid input or an operational failure. Its JSON output is a stable schema-1
 document on standard output, including for exit codes `1` and `2` (except
 command-line syntax errors).
 
+If `check` reports an environment mismatch, compare the named fields with the
+interpreter, CI runner, and `--profile` used to record the baseline. Only Python
+major.minor values are shown; platform, machine, and profile values are not
+echoed in the error. If the target set differs, check explicit `--module`
+selections against the recorded modules. Correct a selection mistake or record
+and review a new baseline for an intentional identity or target-set change;
+`refresh` cannot make those policy changes. A matching five-field identity does
+not prove that dependencies, hardware, or host load are comparable.
+
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
 publication, install `"importtime-check[pytest]==0.1.0a1"` instead of the

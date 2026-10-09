@@ -191,8 +191,9 @@ def test_configure_rejects_invalid_baseline_and_environment(
         "probe_environment",
         lambda **kwargs: EnvironmentIdentity("cpython", "3.12", "win32", "amd64"),
     )
-    with pytest.raises(pytest.UsageError, match="environment differs"):
+    with pytest.raises(pytest.UsageError, match="environment differs") as found:
         plugin.pytest_configure(_config())
+    assert "python: baseline 3.11, current 3.12" in str(found.value)
     monkeypatch.setattr(
         plugin,
         "probe_environment",

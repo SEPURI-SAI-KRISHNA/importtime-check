@@ -45,6 +45,19 @@ def _baseline() -> Baseline:
     )
 
 
+def test_baseline_error_exposes_tuple_diagnostics_without_changing_other_kinds() -> (
+    None
+):
+    missing = BaselineError("baseline-missing", "not found")
+    assert missing.differing_fields == ()
+    assert missing.missing == missing.stale == ()
+    mismatch = BaselineError(
+        "environment-mismatch", "identity differs", differing_fields=("python",)
+    )
+    assert mismatch.differing_fields == ("python",)
+    assert str(mismatch) == "identity differs"
+
+
 def test_canonical_json_round_trip_and_copied_targets() -> None:
     source = {"json": TargetBaseline(420, 25, "10.00")}
     value = Baseline(
