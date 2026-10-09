@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing protected tag, for example v0.1.0a1
+        description: Existing protected tag matching the source version
         required: true
         type: string
       confirm:
@@ -28,7 +28,6 @@ jobs:
       actions: read
       contents: read
       issues: read
-      pull-requests: read
     outputs:
       sha: ${{ steps.verify.outputs.sha }}
     steps:

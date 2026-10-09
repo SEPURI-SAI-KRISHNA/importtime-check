@@ -97,7 +97,38 @@ def _tag_commit(repository: str, tag: str, token: str) -> str:
     raise ReleasePreflightError("tag indirection is too deep")
 
 
-def _check_milestone(repository: str, token: str, milestone: int) -> None:
+def _open_milestone(repository: str, token: str, version: str) -> int:
+    matches: list[int] = []
+    for page in range(1, 102):
+        items = _get(
+            repository, f"milestones?state=open&per_page=100&page={page}", token
+        )
+        if not isinstance(items, list):
+            raise ReleasePreflightError("milestone response is invalid")
+        for item in items:
+            if (
+                not isinstance(item, dict)
+                or type(item.get("number")) is not int
+                or item["number"] < 1
+                or not isinstance(item.get("title"), str)
+                or item.get("state") != "open"
+            ):
+                raise ReleasePreflightError("milestone is invalid")
+            if item["title"] == version:
+                matches.append(item["number"])
+        if len(items) < 100:
+            break
+    else:
+        raise ReleasePreflightError("too many milestones to validate")
+    if len(matches) != 1:
+        raise ReleasePreflightError(
+            f"expected one open milestone titled {version!r}; found {len(matches)}"
+        )
+    return matches[0]
+
+
+def _check_milestone(repository: str, token: str, milestone: int, version: str) -> int:
+    release_issues: list[int] = []
     for page in range(1, 102):
         items = _get(
             repository,
@@ -107,15 +138,54 @@ def _check_milestone(repository: str, token: str, milestone: int) -> None:
         if not isinstance(items, list):
             raise ReleasePreflightError("milestone response is invalid")
         for item in items:
-            if not isinstance(item, dict) or not isinstance(item.get("number"), int):
+            if (
+                not isinstance(item, dict)
+                or type(item.get("number")) is not int
+                or item["number"] < 1
+                or item.get("state") != "open"
+                or not isinstance(item.get("title"), str)
+                or not isinstance(item.get("milestone"), dict)
+                or type(item["milestone"].get("number")) is not int
+                or item["milestone"].get("number") != milestone
+            ):
                 raise ReleasePreflightError("milestone issue is invalid")
-            if item["number"] != 28 and "pull_request" not in item:
+            if "pull_request" in item:
+                continue
+            if item["title"] == f"release: {version}":
+                release_issues.append(item["number"])
+            else:
                 raise ReleasePreflightError(
                     f"milestone still has open Issue #{item['number']}"
                 )
         if len(items) < 100:
-            return
-    raise ReleasePreflightError("milestone has too many issues to validate")
+            break
+    else:
+        raise ReleasePreflightError("milestone has too many issues to validate")
+    if len(release_issues) != 1:
+        raise ReleasePreflightError(
+            f"expected one open release issue titled 'release: {version}' "
+            "in the milestone; "
+            f"found {len(release_issues)}"
+        )
+    number = release_issues[0]
+    release_issue = _get(repository, f"issues/{number}", token)
+    release_milestone = (
+        release_issue.get("milestone") if isinstance(release_issue, dict) else None
+    )
+    if (
+        not isinstance(release_issue, dict)
+        or release_issue.get("number") != number
+        or release_issue.get("state") != "open"
+        or release_issue.get("title") != f"release: {version}"
+        or "pull_request" in release_issue
+        or not isinstance(release_milestone, dict)
+        or type(release_milestone.get("number")) is not int
+        or release_milestone.get("number") != milestone
+    ):
+        raise ReleasePreflightError(
+            f"release: {version} issue must remain open in the milestone"
+        )
+    return number
 
 
 def validate_release(
@@ -127,13 +197,12 @@ def validate_release(
     main_sha: str,
     token: str,
     version: str,
-    milestone: int,
 ) -> str:
     """Return the immutable release commit after all remote checks pass."""
     if _REPOSITORY.fullmatch(repository) is None or _SHA.fullmatch(main_sha) is None:
         raise ReleasePreflightError("repository or main commit is invalid")
-    if not token or milestone < 1:
-        raise ReleasePreflightError("GitHub token or milestone is missing")
+    if not token:
+        raise ReleasePreflightError("GitHub token is missing")
     if tag != f"v{version}" or confirmation != f"publish {version}":
         raise ReleasePreflightError("tag or manual confirmation does not match version")
     if approval != version:
@@ -159,23 +228,8 @@ def validate_release(
     ]
     if not matching or matching[0].get("conclusion") != "success":
         raise ReleasePreflightError("latest main CI for the tag commit is not green")
-    _check_milestone(repository, token, milestone)
-    release_issue = _get(repository, "issues/28", token)
-    release_milestone = (
-        release_issue.get("milestone") if isinstance(release_issue, dict) else None
-    )
-    if (
-        not isinstance(release_issue, dict)
-        or release_issue.get("state") != "open"
-        or not isinstance(release_milestone, dict)
-        or release_milestone.get("number") != milestone
-    ):
-        raise ReleasePreflightError(
-            "release Issue #28 must remain open in the milestone"
-        )
-    dependency_pr = _get(repository, "pulls/13", token)
-    if not isinstance(dependency_pr, dict) or dependency_pr.get("state") == "open":
-        raise ReleasePreflightError("dependency PR #13 is not resolved")
+    milestone = _open_milestone(repository, token, version)
+    _check_milestone(repository, token, milestone, version)
     environment = _get(repository, "environments/pypi", token)
     if not isinstance(environment, dict) or environment.get("name") != "pypi":
         raise ReleasePreflightError("pypi environment is missing")
@@ -211,7 +265,6 @@ def main() -> int:
             main_sha=os.environ.get("GITHUB_SHA", ""),
             token=os.environ.get("GITHUB_TOKEN", ""),
             version=version,
-            milestone=1,
         )
         output = os.environ.get("GITHUB_OUTPUT", "")
         if not output:
