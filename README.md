@@ -106,6 +106,11 @@ importtime-check check --baseline importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json --format json
 ```
 
+For a complete path from a pinned install to a reviewed baseline and a GitHub
+Actions gate, see the [CI baseline guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/ci-baselines.md).
+Its example workflows are for a consuming project, not this repository's
+release pipeline.
+
 On the development branch (planned for `0.1.0a2`, **not** available in the
 published `0.1.0a1`), refresh the recorded medians after an intentional change:
 

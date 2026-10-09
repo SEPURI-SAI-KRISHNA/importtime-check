@@ -1,0 +1,44 @@
+name: Import-time baseline candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install locked import environment
+        run: |
+          python -m pip install --requirement ci/requirements-importtime.txt
+          python -m pip check
+
+      - name: Record candidate, without changing reviewed policy
+        run: |
+          mkdir -p .tmp
+          importtime-check baseline record \
+            --output .tmp/importtime-baseline-candidate.json \
+            --module packaging \
+            --warmups 1 --samples 7 \
+            --max-increase-us 1000 --max-increase-percent 25 \
+            --profile gh-ubuntu-24.04
+
+      - name: Upload candidate for human review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: importtime-baseline-candidate
+          path: .tmp/importtime-baseline-candidate.json
+          if-no-files-found: error
