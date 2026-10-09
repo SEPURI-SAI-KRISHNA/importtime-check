@@ -12,10 +12,11 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-Version `0.1.0a1` is the first public alpha. Install it with:
+The source tree targets version `0.1.0a2`, the second alpha. Install it once
+available on PyPI with:
 
 ```console
-python -m pip install --pre importtime-check==0.1.0a1
+python -m pip install --pre importtime-check==0.1.0a2
 ```
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
@@ -111,8 +112,7 @@ Actions gate, see the [CI baseline guide](https://github.com/SEPURI-SAI-KRISHNA/
 Its example workflows are for a consuming project, not this repository's
 release pipeline.
 
-On the development branch (planned for `0.1.0a2`, **not** available in the
-published `0.1.0a1`), refresh the recorded medians after an intentional change:
+In `0.1.0a2`, refresh the recorded medians after an intentional change:
 
 ```console
 importtime-check baseline refresh --file importtime-baseline.json --replace
@@ -144,7 +144,7 @@ not prove that dependencies, hardware, or host load are comparable.
 
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
-publication, install `"importtime-check[pytest]==0.1.0a1"` instead of the
+publication, install `"importtime-check[pytest]==0.1.0a2"` instead of the
 editable checkout:
 
 ```console
@@ -198,8 +198,8 @@ See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blo
 for the complete contribution workflow and
 [SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
 for private vulnerability reporting.
-The [first alpha release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a1.md) summarize its
-capabilities, compatibility, and limitations.
+The [0.1.0a2 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a2.md) summarize changes,
+compatibility, and migration from the first alpha.
 
 ## Current limits
 

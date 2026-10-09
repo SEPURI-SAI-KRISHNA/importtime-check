@@ -1,3 +1,3 @@
 # Demonstration environment; replace packaging with your complete project lock.
-importtime-check==0.1.0a1
+importtime-check==0.1.0a2
 packaging==26.3
