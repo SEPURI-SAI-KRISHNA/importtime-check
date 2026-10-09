@@ -56,6 +56,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0005-parser-and-domain-model-contract.md",
     "docs/design/0006-isolated-measurement-and-sampling.md",
     "docs/design/0007-regression-and-integration-contract.md",
+    "docs/design/0008-safe-baseline-refresh-and-diagnostics.md",
     "docs/design/README.md",
     "docs/releases/README.md",
     "docs/releases/v0.1.0a1.md",
