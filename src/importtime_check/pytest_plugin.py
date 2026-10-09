@@ -29,7 +29,12 @@ from ._measurement import (
     _timeout,
     _working_directory,
 )
-from ._regression import _target_set, check_baseline, probe_environment
+from ._regression import (
+    _require_same_environment,
+    _target_set,
+    check_baseline,
+    probe_environment,
+)
 from ._report import report_text
 
 
@@ -119,10 +124,7 @@ def _gate(config: pytest.Config) -> _Gate:
         working_directory=directory,
         profile=profile,
     )
-    if identity != baseline.environment:
-        raise BaselineError(
-            "environment-mismatch", "current environment differs from baseline"
-        )
+    _require_same_environment(baseline, identity)
     return _Gate(baseline, modules, interpreter, timeout, directory, profile)
 
 

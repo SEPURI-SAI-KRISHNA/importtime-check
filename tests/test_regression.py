@@ -319,6 +319,88 @@ def test_evaluation_rejects_noncomparable_data() -> None:
     assert environment.value.kind == "environment-mismatch"
 
 
+def test_environment_diagnostics_are_ordered_and_redact_unsafe_values() -> None:
+    baseline = Baseline(
+        EnvironmentIdentity(
+            "cpython",
+            "3.11",
+            "baseline-platform-secret",
+            "baseline-host-secret",
+            "profile-secret",
+        ),
+        SamplingPolicy(0, 1),
+        {"sample": TargetBaseline(100, 5, "10")},
+    )
+    current = EnvironmentIdentity(
+        "cpython",
+        "3.12",
+        "current-platform-secret",
+        "current-host-secret",
+        "other-secret",
+    )
+    with pytest.raises(BaselineError) as found:
+        evaluate_baseline(baseline, {"sample": _set("sample", (100,))}, current)
+    error = found.value
+    assert error.kind == "environment-mismatch"
+    assert error.differing_fields == ("python", "platform", "machine", "profile")
+    assert error.missing == error.stale == ()
+    assert "python: baseline 3.11, current 3.12" in error.reason
+    assert error.reason.index("python:") < error.reason.index("platform differs")
+    assert error.reason.index("platform differs") < error.reason.index(
+        "machine differs"
+    )
+    assert error.reason.index("machine differs") < error.reason.index("profile differs")
+    assert "record and review a new baseline" in error.reason
+    for secret in (
+        "baseline-platform-secret",
+        "baseline-host-secret",
+        "profile-secret",
+        "current-platform-secret",
+        "current-host-secret",
+        "other-secret",
+        INTERPRETER,
+    ):
+        assert secret not in error.reason
+    assert regression_module._IDENTITY_FIELDS == (
+        "implementation",
+        "python",
+        "platform",
+        "machine",
+        "profile",
+    )
+
+
+def test_single_identity_field_and_refresh_use_shared_diagnostic() -> None:
+    current = EnvironmentIdentity("cpython", "3.11", "win32", "amd64", "ci")
+    with pytest.raises(BaselineError) as evaluated:
+        evaluate_baseline(_baseline(), {"sample": _set("sample", (100,))}, current)
+    with pytest.raises(BaselineError) as refreshed:
+        refresh_baseline(_baseline(), {"sample": _set("sample", (100,))}, current)
+    assert evaluated.value.differing_fields == ("profile",)
+    assert refreshed.value.differing_fields == ("profile",)
+    assert refreshed.value.reason == evaluated.value.reason
+    assert "ci" not in evaluated.value.reason
+
+
+def test_target_set_diagnostics_are_sorted_and_actionable() -> None:
+    baseline = _baseline(modules=("zeta", "alpha", "beta"))
+    with pytest.raises(BaselineError) as found:
+        evaluate_baseline(
+            baseline, {"omega": _set("omega", (1,)), "delta": _set("delta", (2,))}, ENV
+        )
+    error = found.value
+    assert error.kind == "target-set-mismatch"
+    assert error.differing_fields == ()
+    assert error.missing == ("delta", "omega")
+    assert error.stale == ("alpha", "beta", "zeta")
+    assert "missing from baseline: delta, omega" in error.reason
+    assert "stale in baseline: alpha, beta, zeta" in error.reason
+    assert "Check explicit module selections" in error.reason
+    with pytest.raises(BaselineError) as missing_only:
+        evaluate_baseline(baseline, {"delta": _set("delta", (1,))}, ENV)
+    assert "missing from baseline: delta" in missing_only.value.reason
+
+
 def test_evaluation_rejects_wrong_sample_values() -> None:
     baseline = _baseline()
     with pytest.raises(ValueError, match="module names"):
@@ -505,6 +587,21 @@ def test_check_rejects_environment_mismatch_without_import(
     with pytest.raises(BaselineError) as found:
         check_baseline(_baseline())
     assert found.value.kind == "environment-mismatch"
+    assert found.value.differing_fields == ("python",)
+
+
+def test_check_rejects_target_set_before_probe_or_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("probe or target import should not start")
+
+    monkeypatch.setattr(regression_module, "probe_environment", forbidden)
+    monkeypatch.setattr(regression_module, "sample_import", forbidden)
+    with pytest.raises(BaselineError) as found:
+        check_baseline(_baseline(modules=("zeta", "alpha")), modules=("omega", "delta"))
+    assert found.value.missing == ("delta", "omega")
+    assert found.value.stale == ("alpha", "zeta")
 
 
 def test_real_interpreter_identity_probe() -> None:

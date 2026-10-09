@@ -418,6 +418,68 @@ def test_check_errors_and_debug(
     assert json.loads(capsys.readouterr().out)["error"]["kind"] == "target-set-mismatch"
 
 
+def test_check_mismatch_diagnostics_keep_schema_and_exit_code(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    _refresh_source(path)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("probe or target import should not start")
+
+    monkeypatch.setattr(regression, "sample_import", forbidden)
+    monkeypatch.setattr(
+        regression,
+        "probe_environment",
+        lambda **kwargs: EnvironmentIdentity(
+            "cpython", "3.12", "private-platform", "private-host", "private-profile"
+        ),
+    )
+    arguments = ["check", "--baseline", str(path), "--format", "json"]
+    assert cli.main(arguments) == 2
+    output = capsys.readouterr()
+    assert output.err == ""
+    document = json.loads(output.out)
+    assert set(document) == {"schema_version", "status", "error"}
+    assert document["schema_version"] == 1
+    assert document["status"] == "error"
+    assert set(document["error"]) == {"kind", "message"}
+    assert document["error"]["kind"] == "environment-mismatch"
+    message = document["error"]["message"]
+    assert "python: baseline 3.11, current 3.12" in message
+    assert "platform differs; machine differs; profile differs" in message
+    for secret in ("private-platform", "private-host", "private-profile", str(path)):
+        assert secret not in message
+    assert cli.main(arguments[:-2]) == 2
+    assert message in capsys.readouterr().err
+
+    monkeypatch.setattr(regression, "probe_environment", forbidden)
+    assert (
+        cli.main(
+            [
+                "check",
+                "--baseline",
+                str(path),
+                "--module",
+                "omega",
+                "--module",
+                "delta",
+                "--format",
+                "json",
+            ]
+        )
+        == 2
+    )
+    target_error = json.loads(capsys.readouterr().out)["error"]
+    assert set(target_error) == {"kind", "message"}
+    assert target_error["kind"] == "target-set-mismatch"
+    assert "missing from baseline: delta, omega" in target_error["message"]
+    assert "stale in baseline: json, zeta" in target_error["message"]
+
+
 def test_preflight_rejects_bad_options_before_measurement(
     synthetic: None,
     tmp_path: Path,

@@ -48,6 +48,7 @@ _PROBE = (
     "'python':f'{sys.version_info.major}.{sys.version_info.minor}',"
     "'platform':sys.platform,'machine':platform.machine()}))"
 )
+_IDENTITY_FIELDS = ("implementation", "python", "platform", "machine", "profile")
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,7 +118,10 @@ def _target_set(baseline: Baseline, modules: Sequence[str]) -> tuple[str, ...]:
     if missing or stale:
         raise BaselineError(
             "target-set-mismatch",
-            f"target set differs: missing={missing}, stale={stale}",
+            "target set differs: "
+            f"missing from baseline: {', '.join(missing) or 'none'}; "
+            f"stale in baseline: {', '.join(stale) or 'none'}. "
+            "Check explicit module selections or record and review a new baseline.",
             missing=missing,
             stale=stale,
         )
@@ -127,9 +131,28 @@ def _target_set(baseline: Baseline, modules: Sequence[str]) -> tuple[str, ...]:
 def _require_same_environment(
     baseline: Baseline, environment: EnvironmentIdentity
 ) -> None:
-    if environment != baseline.environment:
+    differing = tuple(
+        field
+        for field in _IDENTITY_FIELDS
+        if getattr(baseline.environment, field) != getattr(environment, field)
+    )
+    if differing:
+        details = [
+            (
+                f"python: baseline {baseline.environment.python}, "
+                f"current {environment.python}"
+                if field == "python"
+                else f"{field} differs"
+            )
+            for field in differing
+        ]
         raise BaselineError(
-            "environment-mismatch", "current environment differs from baseline"
+            "environment-mismatch",
+            "current environment differs from baseline: "
+            + "; ".join(details)
+            + ". Select the intended interpreter, runner, and profile or "
+            "record and review a new baseline.",
+            differing_fields=differing,
         )
 
 

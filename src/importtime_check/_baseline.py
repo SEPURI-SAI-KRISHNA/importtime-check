@@ -45,7 +45,7 @@ _ErrorKind = Literal[
 class BaselineError(ValueError):
     """A baseline or environment cannot be safely compared."""
 
-    __slots__ = ("kind", "missing", "reason", "stale")
+    __slots__ = ("differing_fields", "kind", "missing", "reason", "stale")
 
     def __init__(
         self,
@@ -54,11 +54,13 @@ class BaselineError(ValueError):
         *,
         missing: tuple[str, ...] = (),
         stale: tuple[str, ...] = (),
+        differing_fields: tuple[str, ...] = (),
     ) -> None:
         self.kind = kind
         self.reason = reason
         self.missing = missing
         self.stale = stale
+        self.differing_fields = tuple(differing_fields)
         super().__init__(reason)
 
 
