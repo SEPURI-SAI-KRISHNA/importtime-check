@@ -107,6 +107,26 @@ importtime-check check --baseline importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json --format json
 ```
 
+The unreleased source checkout also supports distinct, reviewed allowances for
+each recorded module (planned for `0.1.0a3`). After installing this checkout
+with `python -m pip install --editable .`, a two-module candidate can be made
+without hand-editing JSON:
+
+```console
+importtime-check baseline record --output importtime-local.json --module email --module json --budget email=150,20 --budget json=25,10 --profile local-review
+importtime-check baseline show --file importtime-local.json
+importtime-check check --baseline importtime-local.json --module email --module json --profile local-review
+importtime-check baseline refresh --file importtime-local.json --replace --profile local-review
+```
+
+This records `email` with a 150 microsecond / 20% allowance and `json` with a
+25 microsecond / 10% allowance; those values are illustrative, not recommended
+thresholds. A check may report a regression if a later measurement exceeds
+both allowances for either target. Refresh updates medians only and preserves
+the recorded budgets. Use `baseline record --replace` only for an intentional
+policy change, and review the resulting file diff. A local baseline is not a
+CI baseline: choose budgets from repeated observations on a controlled runner.
+
 For a complete path from a pinned install to a reviewed baseline and a GitHub
 Actions gate, see the [CI baseline guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/ci-baselines.md).
 Its example workflows are for a consuming project, not this repository's
