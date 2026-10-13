@@ -83,6 +83,20 @@ def _record(path: Path, *extra: str) -> list[str]:
     ]
 
 
+def _record_budgets(path: Path, *extra: str) -> list[str]:
+    return [
+        "baseline",
+        "record",
+        "--output",
+        str(path),
+        "--module",
+        "zeta",
+        "--module",
+        "json",
+        *extra,
+    ]
+
+
 def _refresh(path: Path, *extra: str) -> list[str]:
     return ["baseline", "refresh", "--file", str(path), "--replace", *extra]
 
@@ -371,6 +385,247 @@ def test_measure_and_record_show_workflows(
         cli.main(_record(path))
     assert error.value.code == 2
     assert "use --replace" in capsys.readouterr().err
+
+
+def test_record_per_target_budgets_are_sorted_normalized_and_reviewable(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    path = tmp_path / "baseline.json"
+    arguments = _record_budgets(
+        path, "--budget", "zeta=0,2.500", "--budget", "json=25,10.00"
+    )
+    assert cli.main(arguments) == 0
+    baseline = decode_baseline(path.read_bytes())
+    assert path.read_bytes() == encode_baseline(baseline)
+    assert tuple(baseline.targets) == ("json", "zeta")
+    assert baseline.targets["json"] == TargetBaseline(150, 25, "10")
+    assert baseline.targets["zeta"] == TargetBaseline(90, 0, "2.5")
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert output.out.splitlines() == [
+        f"Recorded 2 target(s) in {path}",
+        "json: allowances 25 us or 10%",
+        "zeta: allowances 0 us or 2.5%",
+        "Review the baseline file diff before accepting these budgets.",
+    ]
+    original = path.read_bytes()
+    with pytest.raises(SystemExit) as error:
+        cli.main(arguments)
+    assert error.value.code == 2
+    assert "use --replace" in capsys.readouterr().err
+    assert path.read_bytes() == original
+    replacement = _record_budgets(
+        path, "--budget", "json=5,1", "--budget", "zeta=10,3", "--replace"
+    )
+    assert cli.main(replacement) == 0
+    assert decode_baseline(path.read_bytes()).targets["json"] == TargetBaseline(
+        150, 5, "1"
+    )
+    capsys.readouterr()
+
+
+def test_recorded_per_target_allowances_flow_to_show_and_check(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    path = tmp_path / "baseline.json"
+    assert (
+        cli.main(
+            _record_budgets(path, "--budget", "json=25,10", "--budget", "zeta=50,2.5")
+        )
+        == 0
+    )
+    capsys.readouterr()
+    assert cli.main(["baseline", "show", "--file", str(path)]) == 0
+    shown = capsys.readouterr().out
+    assert "json: 150 us; allowances 25 us or 10%" in shown
+    assert "zeta: 90 us; allowances 50 us or 2.5%" in shown
+
+    recorded = decode_baseline(path.read_bytes())
+    comparison = Baseline(
+        recorded.environment,
+        recorded.sampling,
+        {
+            module: TargetBaseline(
+                100 if module == "json" else 80,
+                target.max_increase_us,
+                target.max_increase_percent,
+            )
+            for module, target in recorded.targets.items()
+        },
+    )
+    save_baseline(path, comparison, replace=True)
+    assert cli.main(["check", "--baseline", str(path)]) == 1
+    report = capsys.readouterr().out
+    assert "REGRESSION json: 100 -> 150 us (+50 us; allowances 25 us or 10%)" in report
+    assert "PASS zeta: 80 -> 90 us (+10 us; allowances 50 us or 2.5%)" in report
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ([], "supply both"),
+        (["--max-increase-us", "5"], "supply both"),
+        (["--max-increase-percent", "10"], "supply both"),
+        (["--budget", "json=5,10"], "missing: zeta"),
+        (
+            ["--budget", "json=5,10", "--budget", "extra=1,2"],
+            "missing: zeta; unknown: extra",
+        ),
+        (
+            ["--budget", "json=5,10", "--budget", "json=5,10"],
+            "duplicate --budget for module 'json'",
+        ),
+        (
+            ["--budget", "json=5,10", "--max-increase-us", "0"],
+            "cannot be mixed",
+        ),
+        (
+            ["--budget", "json=5,10", "--max-increase-percent", "0"],
+            "cannot be mixed",
+        ),
+    ],
+)
+def test_record_budget_modes_and_target_sets_fail_before_probe(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    options: list[str],
+    message: str,
+) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_bytes(b"reviewed baseline bytes")
+
+    def forbidden(**kwargs: Any) -> None:
+        raise AssertionError("must not probe")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    with pytest.raises(SystemExit) as error:
+        cli.main(_record_budgets(path, *options, "--replace"))
+    assert error.value.code == 2
+    assert message in capsys.readouterr().err
+    assert path.read_bytes() == b"reviewed baseline bytes"
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "json",
+        "json=5",
+        "json=5,10,2",
+        "json=5=6,10",
+        "json=,10",
+        "json=01,10",
+        "json=+1,10",
+        "json=-1,10",
+        "json=1.0,10",
+        "json=1e2,10",
+        "json=1us,10",
+        "json=1,",
+        "json=1,+10",
+        "json=1,1e2",
+        "json=1,10.0%",
+        "json=1,01",
+        " json=1,10",
+        "json =1,10",
+        "json=1,10 ",
+        "bad-name=1,10",
+    ],
+)
+def test_record_malformed_budget_is_usage_error_without_measurement(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_bytes(b"reviewed baseline bytes")
+
+    def forbidden(**kwargs: Any) -> None:
+        raise AssertionError("must not probe")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    with pytest.raises(SystemExit) as error:
+        cli.main(_record_budgets(path, "--budget", entry, "--replace"))
+    assert error.value.code == 2
+    assert entry in capsys.readouterr().err
+    assert path.read_bytes() == b"reviewed baseline bytes"
+
+
+def test_record_duplicate_module_and_refresh_budget_fail_before_probe(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_bytes(b"reviewed baseline bytes")
+
+    def forbidden(**kwargs: Any) -> None:
+        raise AssertionError("must not probe")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    with pytest.raises(SystemExit) as duplicate:
+        cli.main(
+            _record_budgets(
+                path,
+                "--module",
+                "json",
+                "--budget",
+                "json=5,10",
+                "--budget",
+                "zeta=1,2",
+                "--replace",
+            )
+        )
+    assert duplicate.value.code == 2
+    assert "module names must not repeat" in capsys.readouterr().err
+    with pytest.raises(SystemExit) as refresh:
+        cli.main(_refresh(path, "--budget", "json=5,10"))
+    assert refresh.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+    assert path.read_bytes() == b"reviewed baseline bytes"
+
+
+def test_record_budget_probe_or_sample_failure_preserves_existing_bytes(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "baseline.json"
+    path.write_bytes(b"reviewed baseline bytes")
+    arguments = _record_budgets(
+        path, "--budget", "json=5,10", "--budget", "zeta=1,2", "--replace"
+    )
+
+    def probe_failure(**kwargs: Any) -> None:
+        raise ValueError("probe unavailable")
+
+    monkeypatch.setattr(cli, "probe_environment", probe_failure)
+    with pytest.raises(SystemExit) as probe:
+        cli.main(arguments)
+    assert probe.value.code == 2
+    assert "probe unavailable" in capsys.readouterr().err
+    assert path.read_bytes() == b"reviewed baseline bytes"
+    monkeypatch.setattr(cli, "probe_environment", lambda **kwargs: ENV)
+
+    def sample_failure(module: str, **kwargs: Any) -> ImportSampleSet:
+        if module == "zeta":
+            raise ValueError("sample unavailable")
+        return _sample(module, **kwargs)
+
+    monkeypatch.setattr(cli, "sample_import", sample_failure)
+    with pytest.raises(SystemExit) as sample:
+        cli.main(arguments)
+    assert sample.value.code == 2
+    assert "sample unavailable" in capsys.readouterr().err
+    assert path.read_bytes() == b"reviewed baseline bytes"
 
 
 def test_check_exit_codes_and_json_contract(

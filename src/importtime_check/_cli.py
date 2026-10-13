@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -27,6 +28,7 @@ from pathlib import Path
 from ._baseline import (
     BaselineError,
     SamplingPolicy,
+    TargetAllowance,
     _nonnegative_int,
     _percent,
     decode_baseline,
@@ -50,6 +52,8 @@ from ._regression import (
 )
 from ._report import error_json, report_json, report_text
 from ._sampling import sample_import
+
+_BUDGET_US = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
 
 def _add_runtime(parser: argparse.ArgumentParser, *, profile: bool = False) -> None:
@@ -83,8 +87,14 @@ def _parser() -> argparse.ArgumentParser:
     record = baseline_commands.add_parser("record", help="record a baseline file")
     record.add_argument("--output", required=True)
     record.add_argument("--module", action="append", required=True)
-    record.add_argument("--max-increase-us", type=int, required=True)
-    record.add_argument("--max-increase-percent", required=True)
+    record.add_argument("--max-increase-us", type=int)
+    record.add_argument("--max-increase-percent")
+    record.add_argument(
+        "--budget",
+        action="append",
+        metavar="MODULE=US,PERCENT",
+        help="repeat once per --module; cannot mix with common allowance options",
+    )
     record.add_argument("--warmups", type=int, default=1)
     record.add_argument("--samples", type=int, default=5)
     record.add_argument("--replace", action="store_true")
@@ -119,7 +129,8 @@ def _modules(values: Sequence[str]) -> tuple[str, ...]:
     for module in values:
         _validate_module_name(module)
     if len(values) != len(set(values)):
-        raise ValueError("module names must not repeat")
+        repeated = sorted({module for module in values if values.count(module) > 1})
+        raise ValueError(f"module names must not repeat: {', '.join(repeated)}")
     return tuple(sorted(values))
 
 
@@ -127,6 +138,55 @@ def _profile(value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError("profile must be non-blank")
     return value
+
+
+def _record_allowances(
+    arguments: argparse.Namespace, modules: tuple[str, ...]
+) -> tuple[TargetAllowance | None, dict[str, TargetAllowance] | None]:
+    entries: list[str] | None = arguments.budget
+    if entries is None:
+        if arguments.max_increase_us is None or arguments.max_increase_percent is None:
+            raise ValueError(
+                "supply both --max-increase-us and --max-increase-percent, "
+                "or one --budget per module"
+            )
+        return (
+            TargetAllowance(
+                _nonnegative_int(arguments.max_increase_us, "max_increase_us"),
+                _percent(arguments.max_increase_percent),
+            ),
+            None,
+        )
+    if (
+        arguments.max_increase_us is not None
+        or arguments.max_increase_percent is not None
+    ):
+        raise ValueError("--budget cannot be mixed with common allowance options")
+    allowances: dict[str, TargetAllowance] = {}
+    for entry in entries:
+        if entry.count("=") != 1 or entry.count(",") != 1:
+            raise ValueError(f"invalid --budget entry: {entry!r}")
+        module, amounts = entry.split("=", 1)
+        absolute, percent = amounts.split(",", 1)
+        try:
+            _validate_module_name(module)
+            if _BUDGET_US.fullmatch(absolute) is None:
+                raise ValueError("US must be plain non-negative decimal digits")
+            allowance = TargetAllowance(int(absolute), percent)
+        except ValueError as error:
+            raise ValueError(f"invalid --budget entry {entry!r}: {error}") from error
+        if module in allowances:
+            raise ValueError(f"duplicate --budget for module {module!r}")
+        allowances[module] = allowance
+    missing = sorted(set(modules) - allowances.keys())
+    unknown = sorted(allowances.keys() - set(modules))
+    if missing or unknown:
+        raise ValueError(
+            "--budget target set differs: "
+            f"missing: {', '.join(missing) or 'none'}; "
+            f"unknown: {', '.join(unknown) or 'none'}"
+        )
+    return None, allowances
 
 
 def _measure(arguments: argparse.Namespace) -> int:
@@ -156,8 +216,7 @@ def _measure(arguments: argparse.Namespace) -> int:
 def _record(arguments: argparse.Namespace) -> int:
     modules = _modules(arguments.module)
     policy = SamplingPolicy(arguments.warmups, arguments.samples)
-    allowance = _nonnegative_int(arguments.max_increase_us, "max_increase_us")
-    percent = _percent(arguments.max_increase_percent)
+    common_allowance, per_target_allowances = _record_allowances(arguments, modules)
     profile = _profile(arguments.profile)
     interpreter, timeout, directory = _runtime(arguments)
     output = Path(arguments.output)
@@ -182,14 +241,28 @@ def _record(arguments: argparse.Namespace) -> int:
         )
         for module in modules
     }
-    baseline = record_baseline(
-        observations,
-        environment,
-        max_increase_us=allowance,
-        max_increase_percent=percent,
-    )
+    if per_target_allowances is None:
+        assert common_allowance is not None
+        baseline = record_baseline(
+            observations,
+            environment,
+            max_increase_us=common_allowance.max_increase_us,
+            max_increase_percent=common_allowance.max_increase_percent,
+        )
+    else:
+        baseline = record_baseline(
+            observations, environment, per_target_allowances=per_target_allowances
+        )
     save_baseline(output, baseline, replace=arguments.replace)
     print(f"Recorded {len(modules)} target(s) in {output}")
+    if per_target_allowances is not None:
+        for module in modules:
+            allowance = baseline.targets[module]
+            print(
+                f"{module}: allowances {allowance.max_increase_us} us or "
+                f"{allowance.max_increase_percent}%"
+            )
+        print("Review the baseline file diff before accepting these budgets.")
     return 0
 
 
