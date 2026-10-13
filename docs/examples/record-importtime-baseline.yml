@@ -31,9 +31,10 @@ jobs:
           mkdir -p .tmp
           importtime-check baseline record \
             --output .tmp/importtime-baseline-candidate.json \
-            --module packaging \
+            --module packaging --module packaging.version \
             --warmups 1 --samples 7 \
-            --max-increase-us 1000 --max-increase-percent 25 \
+            --budget packaging=1000,25 \
+            --budget packaging.version=2000,30 \
             --profile gh-ubuntu-24.04
 
       - name: Upload candidate for human review
