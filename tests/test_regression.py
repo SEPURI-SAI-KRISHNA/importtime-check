@@ -37,9 +37,12 @@ from importtime_check import (
     ImportTimeParseResult,
     RegressionReport,
     SamplingPolicy,
+    TargetAllowance,
     TargetBaseline,
     TargetRegressionResult,
     check_baseline,
+    decode_baseline,
+    encode_baseline,
     evaluate_baseline,
     probe_environment,
     record_baseline,
@@ -190,6 +193,106 @@ def test_record_baseline_uses_observed_medians_and_normalizes_percent() -> None:
     assert baseline.sampling == SamplingPolicy(1, 2)
 
 
+def test_record_per_target_allowances_round_trip_and_check() -> None:
+    observations = {
+        "zeta": _set("zeta", (90, 100)),
+        "alpha": _set("alpha", (90, 100)),
+    }
+    allowances = {
+        "zeta": TargetAllowance(10, "20.00"),
+        "alpha": TargetAllowance(0, "0.00"),
+    }
+    baseline = record_baseline(observations, ENV, per_target_allowances=allowances)
+    assert tuple(baseline.targets) == ("alpha", "zeta")
+    assert baseline.targets["alpha"] == TargetBaseline(100, 0, "0")
+    assert baseline.targets["zeta"] == TargetBaseline(100, 10, "20")
+    assert baseline.sampling == SamplingPolicy(0, 2)
+    raw = encode_baseline(baseline)
+    assert decode_baseline(raw) == baseline
+    assert encode_baseline(decode_baseline(raw)) == raw
+
+    observations.clear()
+    allowances.clear()
+    assert tuple(baseline.targets) == ("alpha", "zeta")
+    result = evaluate_baseline(
+        baseline,
+        {"zeta": _set("zeta", (100, 110)), "alpha": _set("alpha", (100, 101))},
+        ENV,
+    )
+    assert [(item.module, item.status) for item in result.results] == [
+        ("alpha", "regression"),
+        ("zeta", "pass"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    (
+        ({}, "supply both"),
+        ({"max_increase_us": 0}, "supply both"),
+        ({"max_increase_percent": "0"}, "supply both"),
+        (
+            {
+                "max_increase_us": 0,
+                "per_target_allowances": {"sample": TargetAllowance(0, "0")},
+            },
+            "cannot be mixed",
+        ),
+        (
+            {
+                "max_increase_percent": "0",
+                "per_target_allowances": {"sample": TargetAllowance(0, "0")},
+            },
+            "cannot be mixed",
+        ),
+        ({"per_target_allowances": []}, "non-empty mapping"),
+        ({"per_target_allowances": {}}, "non-empty mapping"),
+    ),
+)
+def test_record_rejects_incomplete_or_mixed_allowance_modes(
+    options: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        record_baseline({"sample": _set("sample", (1,))}, ENV, **cast(Any, options))
+
+
+@pytest.mark.parametrize(
+    ("allowances", "message"),
+    (
+        ({"bad-name": TargetAllowance(0, "0")}, "dotted"),
+        ({"sample": "bad"}, "TargetAllowance"),
+        ({"other": TargetAllowance(0, "0")}, "missing: sample; unknown: other"),
+        (
+            {"sample": TargetAllowance(0, "0"), "other": TargetAllowance(0, "0")},
+            "unknown: other",
+        ),
+        ({"missing": TargetAllowance(0, "0")}, "missing: sample"),
+    ),
+)
+def test_record_rejects_invalid_per_target_allowances(
+    allowances: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        record_baseline(
+            {"sample": _set("sample", (1,))},
+            ENV,
+            per_target_allowances=cast(Any, allowances),
+        )
+
+
+def test_record_per_target_mismatch_is_sorted() -> None:
+    with pytest.raises(ValueError) as found:
+        record_baseline(
+            {"zeta": _set("zeta", (1,)), "alpha": _set("alpha", (1,))},
+            ENV,
+            per_target_allowances={
+                "delta": TargetAllowance(0, "0"),
+                "beta": TargetAllowance(0, "0"),
+            },
+        )
+    assert "missing: alpha, zeta; unknown: beta, delta" in str(found.value)
+
+
 @pytest.mark.parametrize(
     ("observations", "environment", "absolute", "percent", "message"),
     (
@@ -219,6 +322,11 @@ def test_record_rejects_invalid_input(
             max_increase_us=cast(Any, absolute),
             max_increase_percent=percent,
         )
+
+
+def test_record_rejects_nonmapping_observations() -> None:
+    with pytest.raises(ValueError, match="non-empty mapping"):
+        record_baseline(cast(Any, []), ENV, max_increase_us=0, max_increase_percent="0")
 
 
 def test_record_rejects_mixed_settings_and_interpreters() -> None:

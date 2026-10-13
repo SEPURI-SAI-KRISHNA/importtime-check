@@ -162,6 +162,7 @@ def test_public_exports_are_exact() -> None:
         "ImportTimeParseResult",
         "RegressionReport",
         "SamplingPolicy",
+        "TargetAllowance",
         "TargetBaseline",
         "TargetRegressionResult",
         "__version__",

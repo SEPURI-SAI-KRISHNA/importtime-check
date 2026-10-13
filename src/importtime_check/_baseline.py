@@ -123,6 +123,20 @@ class SamplingPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class TargetAllowance:
+    """Approved absolute and relative increase allowances for one target."""
+
+    max_increase_us: int
+    max_increase_percent: str
+
+    def __post_init__(self) -> None:
+        _nonnegative_int(self.max_increase_us, "max_increase_us")
+        object.__setattr__(
+            self, "max_increase_percent", _percent(self.max_increase_percent)
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TargetBaseline:
     """Approved median and absolute/relative increase allowances."""
 
