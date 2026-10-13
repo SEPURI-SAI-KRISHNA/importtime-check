@@ -8,16 +8,17 @@ files are [pinned requirements](../examples/requirements-importtime.txt), a
 project as described below; do not add these example workflows to this
 repository's `.github/workflows/` directory.
 
-The example pins `importtime-check==0.1.0a2`, `packaging==26.3`, CPython 3.11,
+The published example pins `importtime-check==0.1.0a2`, `packaging==26.3`, CPython 3.11,
 the `ubuntu-24.04` runner label, and the action commits. It needs no PyPI
 credentials. It is a starting policy, **not** evidence that every GitHub-hosted
 runner has equivalent hardware or load. For a dependable, tighter performance
 gate, use a controlled runner class or image and investigate ordinary variance
 before choosing allowances. A matching five-field identity cannot detect
 dependency changes, Python patch changes, CPU contention, or host differences.
-Before `0.1.0a2` reaches PyPI, use the published `0.1.0a1` pin for the
-original record and check example, without the new refresh and diagnostic
-features.
+The checked-in workflows remain a working single-target example for the
+published `0.1.0a2`. Do not add the unreleased `--budget` option to those
+workflows while their requirements file still pins `0.1.0a2`; the `0.1.0a3`
+release-preparation change will update the pin and workflow examples together.
 
 ## Bootstrap the policy
 
@@ -69,6 +70,54 @@ importtime-check baseline record --output importtime-local.json --module json --
 importtime-check baseline show --file importtime-local.json
 importtime-check check --baseline importtime-local.json --module json --profile local-smoke
 ```
+
+## Preview a two-module policy from the source checkout
+
+The unreleased source checkout adds one repeatable
+`--budget MODULE=US,PERCENT` entry per explicit `--module`. To try it now,
+install this checkout with `python -m pip install --editable .` in a disposable
+environment. `email` and `json` are standard-library stand-ins for two modules
+installed in the interpreter used by your actual project. Run these commands
+on one machine; do not commit this local baseline as a CI policy:
+
+```console
+importtime-check baseline record --output importtime-local.json --module email --module json --budget email=150,20 --budget json=25,10 --warmups 1 --samples 7 --profile local-review
+importtime-check baseline show --file importtime-local.json
+importtime-check check --baseline importtime-local.json --module email --module json --profile local-review
+importtime-check baseline refresh --file importtime-local.json --replace --profile local-review
+importtime-check baseline show --file importtime-local.json
+```
+
+The resulting schema-1 policy stores these exact, normalized allowances;
+the recorded medians depend on the observations, not on the budgets:
+
+| Target | Allowed increase (us) | Allowed increase (%) |
+| --- | ---: | ---: |
+| `email` | 150 | 20 |
+| `json` | 25 | 10 |
+
+These numbers illustrate syntax only; they are **not** recommended CI
+thresholds. A later `check` can exit `1` if either target increases beyond
+both of its own allowances. `refresh --replace` measures the same targets with
+the stored sampling policy and updates only medians, retaining the table's
+allowances. It does not run as part of `check` or pytest. To change a target,
+identity, sampling policy, or allowance deliberately, re-record with
+`baseline record --replace` and review every changed field in the diff.
+Budget mode requires exactly one entry for each selected module and cannot be
+mixed with the old common-allowance flags; incomplete or ambiguous input is
+rejected before target imports or baseline writing.
+
+For a consuming project's eventual two-module CI workflow, pin the release
+that includes `--budget` in its locked requirements. The manual candidate
+workflow must then pass both `--module` selections and their two `--budget`
+entries; the PR gate must pass the same explicit module list but no budgets.
+Keep the same installed dependency set, Python minor version, runner class,
+and `--profile` for recording and checking. Upload the candidate as an
+artifact, review its identity, both medians, sampling, and **each** allowance,
+then commit the approved JSON through a PR. Neither workflow should rewrite
+the approved baseline automatically. Even with identical recorded identity,
+host load and dependency changes can invalidate a comparison; measure normal
+variance on a controlled runner before selecting a useful budget.
 
 ## When the gate fails
 
