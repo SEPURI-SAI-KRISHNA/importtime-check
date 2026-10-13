@@ -33,5 +33,5 @@ jobs:
         run: |
           importtime-check check \
             --baseline ci/importtime-baseline.json \
-            --module packaging \
+            --module packaging --module packaging.version \
             --profile gh-ubuntu-24.04

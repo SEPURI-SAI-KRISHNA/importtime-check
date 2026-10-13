@@ -12,11 +12,11 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-The source tree targets version `0.1.0a2`, the second alpha. Install it once
-available on PyPI with:
+The source tree targets version `0.1.0a3`, the third alpha. After publication,
+install this exact prerelease from PyPI with:
 
 ```console
-python -m pip install --pre importtime-check==0.1.0a2
+python -m pip install --pre importtime-check==0.1.0a3
 ```
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
@@ -107,10 +107,10 @@ importtime-check check --baseline importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json --format json
 ```
 
-The unreleased source checkout also supports distinct, reviewed allowances for
-each recorded module (planned for `0.1.0a3`). After installing this checkout
-with `python -m pip install --editable .`, a two-module candidate can be made
-without hand-editing JSON:
+Version `0.1.0a3` also supports distinct, reviewed allowances for each
+recorded module. After installing the exact release above (or installing this
+checkout with `python -m pip install --editable .` before publication), a
+two-module candidate can be made without hand-editing JSON:
 
 ```console
 importtime-check baseline record --output importtime-local.json --module email --module json --budget email=150,20 --budget json=25,10 --profile local-review
@@ -132,7 +132,7 @@ Actions gate, see the [CI baseline guide](https://github.com/SEPURI-SAI-KRISHNA/
 Its example workflows are for a consuming project, not this repository's
 release pipeline.
 
-In `0.1.0a2`, refresh the recorded medians after an intentional change:
+Since `0.1.0a2`, you can refresh recorded medians after an intentional change:
 
 ```console
 importtime-check baseline refresh --file importtime-baseline.json --replace
@@ -164,7 +164,7 @@ not prove that dependencies, hardware, or host load are comparable.
 
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
-publication, install `"importtime-check[pytest]==0.1.0a2"` instead of the
+publication, install `"importtime-check[pytest]==0.1.0a3"` instead of the
 editable checkout:
 
 ```console
@@ -218,8 +218,8 @@ See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blo
 for the complete contribution workflow and
 [SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
 for private vulnerability reporting.
-The [0.1.0a2 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a2.md) summarize changes,
-compatibility, and migration from the first alpha.
+The [0.1.0a3 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a3.md) summarize changes,
+compatibility, and migration from earlier alphas.
 
 ## Current limits
 

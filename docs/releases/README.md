@@ -2,9 +2,9 @@
 
 Use this runbook for each deliberately approved release. `VERSION` means the
 literal value in `src/importtime_check/_version.py`; `TAG` means `vVERSION`.
-For example, version `0.1.0a2` uses tag `v0.1.0a2`, milestone `0.1.0a2`,
-release issue title `release: 0.1.0a2`, and reviewed notes in
-`docs/releases/v0.1.0a2.md`. The release-preparation changes use a separate
+For example, version `0.1.0a3` uses tag `v0.1.0a3`, milestone `0.1.0a3`,
+release issue title `release: 0.1.0a3`, and reviewed notes in
+`docs/releases/v0.1.0a3.md`. The release-preparation changes use a separate
 issue and PR, so merging them does not close the release issue prematurely.
 
 ## Before creating the tag
@@ -66,11 +66,12 @@ documentation and default-branch CI remain healthy. Remove the one-time
 `PYPI_RELEASE_APPROVED` variable after successful publication. Only then
 close the release issue and milestone.
 
-For `0.1.0a2`, include a reviewed `baseline refresh --replace` round trip,
-field-level environment and target-set mismatch diagnostics, and the pinned
-CI baseline example in post-publication checks. Existing schema-1 baseline
-files should load without migration; do not refresh an approved baseline just
-to prove compatibility.
+For `0.1.0a3`, include a two-module `baseline record --budget` round trip
+with different allowances, `show` and `check`, and a timing-only
+`baseline refresh --replace` that preserves those allowances. Exercise the
+pinned two-module CI example and confirm the old common-allowance record path
+and existing schema-1 files still work without migration. Do not refresh an
+approved baseline just to prove compatibility.
 
 If PyPI or GitHub disagrees with the reviewed artifacts, stop. Published PyPI
 files cannot be replaced in place. Document the defect, yank only if justified,
