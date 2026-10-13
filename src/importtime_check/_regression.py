@@ -21,16 +21,15 @@ import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 from ._baseline import (
     Baseline,
     BaselineError,
     EnvironmentIdentity,
     SamplingPolicy,
+    TargetAllowance,
     TargetBaseline,
-    _nonnegative_int,
-    _percent,
     _percent_ratio,
 )
 from ._measurement import (
@@ -156,34 +155,92 @@ def _require_same_environment(
         )
 
 
+@overload
 def record_baseline(
     observations: Mapping[str, ImportSampleSet],
     environment: EnvironmentIdentity,
     *,
     max_increase_us: int,
     max_increase_percent: str,
+) -> Baseline: ...
+
+
+@overload
+def record_baseline(
+    observations: Mapping[str, ImportSampleSet],
+    environment: EnvironmentIdentity,
+    *,
+    per_target_allowances: Mapping[str, TargetAllowance],
+) -> Baseline: ...
+
+
+def record_baseline(
+    observations: Mapping[str, ImportSampleSet],
+    environment: EnvironmentIdentity,
+    *,
+    max_increase_us: int | None = None,
+    max_increase_percent: str | None = None,
+    per_target_allowances: Mapping[str, TargetAllowance] | None = None,
 ) -> Baseline:
-    """Construct a reviewable baseline from complete observed sample sets."""
-    allowance = _nonnegative_int(max_increase_us, "max_increase_us")
-    percent = _percent(max_increase_percent)
+    """Record complete samples with common or exact per-target allowances."""
+    if per_target_allowances is None:
+        if max_increase_us is None or max_increase_percent is None:
+            raise ValueError("supply both common allowances or per_target_allowances")
+        common_allowance = TargetAllowance(max_increase_us, max_increase_percent)
+    else:
+        if max_increase_us is not None or max_increase_percent is not None:
+            raise ValueError("common and per-target allowances cannot be mixed")
+        if not isinstance(per_target_allowances, Mapping) or not per_target_allowances:
+            raise ValueError("per_target_allowances must be a non-empty mapping")
+        common_allowance = None
     if not isinstance(environment, EnvironmentIdentity):
         raise ValueError("environment must be an EnvironmentIdentity")
-    if not observations:
-        raise ValueError("observations must not be empty")
+    if not isinstance(observations, Mapping) or not observations:
+        raise ValueError("observations must be a non-empty mapping")
     counts: set[tuple[int, int]] = set()
     interpreters: set[str] = set()
-    targets: dict[str, TargetBaseline] = {}
+    medians: dict[str, int] = {}
     for module, sample_set in observations.items():
         _validate_module_name(module)
         if not isinstance(sample_set, ImportSampleSet) or sample_set.module != module:
             raise ValueError("observations must match their module names")
         counts.add((len(sample_set.warmups), len(sample_set.samples)))
         interpreters.add(sample_set.python_executable)
-        targets[module] = TargetBaseline(
-            sample_set.median_cumulative_us, allowance, percent
-        )
+        medians[module] = sample_set.median_cumulative_us
     if len(counts) != 1 or len(interpreters) != 1:
         raise ValueError("observations must share sampling settings and interpreter")
+
+    allowances: Mapping[str, TargetAllowance]
+    if common_allowance is not None:
+        allowances = {module: common_allowance for module in medians}
+    else:
+        assert per_target_allowances is not None
+        for module, allowance in per_target_allowances.items():
+            _validate_module_name(module)
+            if not isinstance(allowance, TargetAllowance):
+                raise ValueError(
+                    "per_target_allowances must contain TargetAllowance values"
+                )
+        expected = set(medians)
+        supplied = set(per_target_allowances)
+        missing = sorted(expected - supplied)
+        unknown = sorted(supplied - expected)
+        if missing or unknown:
+            raise ValueError(
+                "per_target_allowances target set differs: "
+                f"missing: {', '.join(missing) or 'none'}; "
+                f"unknown: {', '.join(unknown) or 'none'}"
+            )
+        allowances = per_target_allowances
+
+    targets = {
+        module: TargetBaseline(
+            median,
+            allowances[module].max_increase_us,
+            allowances[module].max_increase_percent,
+        )
+        for module, median in medians.items()
+    }
     warmups, samples = counts.pop()
     return Baseline(environment, SamplingPolicy(warmups, samples), targets)
 

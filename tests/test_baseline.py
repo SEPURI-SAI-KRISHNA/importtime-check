@@ -29,6 +29,7 @@ from importtime_check import (
     BaselineError,
     EnvironmentIdentity,
     SamplingPolicy,
+    TargetAllowance,
     TargetBaseline,
     decode_baseline,
     encode_baseline,
@@ -93,6 +94,33 @@ def test_canonical_json_round_trip_and_copied_targets() -> None:
 def test_percentage_normalization(value: str) -> None:
     normalized = {"0": "0", "0.00": "0", "1": "1", "1.20": "1.2", "0.25": "0.25"}
     assert TargetBaseline(0, 0, value).max_increase_percent == normalized[value]
+
+
+def test_target_allowance_normalizes_and_is_immutable() -> None:
+    allowance = TargetAllowance(0, "0.2500")
+    assert allowance.max_increase_us == 0
+    assert allowance.max_increase_percent == "0.25"
+    with pytest.raises(FrozenInstanceError):
+        allowance.max_increase_us = 1  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    ("absolute", "percent", "message"),
+    (
+        (True, "0", "max_increase_us"),
+        (-1, "0", "max_increase_us"),
+        (1.5, "0", "max_increase_us"),
+        (0, 2, "max_increase_percent"),
+        (0, "-1", "max_increase_percent"),
+        (0, "02", "max_increase_percent"),
+        (0, "1e3", "max_increase_percent"),
+    ),
+)
+def test_target_allowance_rejects_invalid_values(
+    absolute: object, percent: object, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        TargetAllowance(cast(Any, absolute), cast(Any, percent))
 
 
 @pytest.mark.parametrize(
