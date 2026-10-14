@@ -71,6 +71,20 @@ Each warmup and sample uses a fresh child process. Warmups are preserved but
 excluded from the median. This reduces single-run noise; it does not guarantee
 that two machines or CI runs have comparable timings.
 
+To inspect several installed modules with the same sampling settings, use
+`sample_imports`. Results are sorted by module name and returned only if every
+target succeeds; a failed run identifies its target, phase, and one-based
+run number.
+
+```python
+from importtime_check import sample_imports
+
+for result in sample_imports(("email", "json"), warmups=1, samples=5):
+    print(result.module, result.median_cumulative_us)
+```
+
+These are observations, not reviewed baseline budgets or regression decisions.
+
 The library also supports reviewable baselines and exact regression decisions:
 
 ```python

@@ -177,5 +177,6 @@ def test_public_exports_are_exact() -> None:
         "record_baseline",
         "refresh_baseline",
         "sample_import",
+        "sample_imports",
         "save_baseline",
     )

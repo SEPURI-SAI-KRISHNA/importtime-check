@@ -38,7 +38,7 @@ from ._regression import (
     record_baseline,
     refresh_baseline,
 )
-from ._sampling import ImportSampleSet, sample_import
+from ._sampling import ImportSampleSet, sample_import, sample_imports
 from ._version import __version__
 
 __all__ = (
@@ -68,5 +68,6 @@ __all__ = (
     "record_baseline",
     "refresh_baseline",
     "sample_import",
+    "sample_imports",
     "save_baseline",
 )

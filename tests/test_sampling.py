@@ -34,6 +34,7 @@ from importtime_check import (
     ImportTimeParseError,
     ImportTimeParseResult,
     sample_import,
+    sample_imports,
 )
 
 
@@ -269,3 +270,168 @@ def test_real_interpreter_sampling_uses_complete_observations(tmp_path: Path) ->
     }
     assert all(run.module == "email.utils" for run in result.samples)
     assert os.path.isabs(result.python_executable)
+
+
+def test_batch_samples_sorted_targets_with_one_runtime_snapshot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    values = {"alpha": (40, 2, 8), "zeta": (50, 6, 10)}
+    counts = {"alpha": 0, "zeta": 0}
+    calls: list[tuple[list[str], dict[str, Any]]] = []
+    monkeypatch.setenv("IMPORTTIME_CHECK_SNAPSHOT", "original")
+
+    def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append((command, kwargs))
+        if len(calls) == 1:
+            monkeypatch.setenv("IMPORTTIME_CHECK_SNAPSHOT", "changed")
+        module = command[-1]
+        number = counts[module]
+        counts[module] += 1
+        return subprocess.CompletedProcess(
+            command, 0, None, f"import time: 1 | {values[module][number]} | {module}"
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    results = sample_imports(
+        ["zeta", "alpha"],
+        python_executable=sys.executable,
+        timeout_seconds=4,
+        working_directory=tmp_path,
+        warmups=1,
+        samples=2,
+    )
+
+    assert isinstance(results, tuple)
+    assert [result.module for result in results] == ["alpha", "zeta"]
+    assert [command[-1] for command, _ in calls] == [
+        "alpha",
+        "alpha",
+        "alpha",
+        "zeta",
+        "zeta",
+        "zeta",
+    ]
+    assert len({id(command) for command, _ in calls}) == 6
+    assert [run.target_event.cumulative_us for run in results[0].warmups] == [40]
+    assert [run.target_event.cumulative_us for run in results[0].samples] == [2, 8]
+    assert [run.target_event.cumulative_us for run in results[1].warmups] == [50]
+    assert [run.target_event.cumulative_us for run in results[1].samples] == [6, 10]
+    assert [result.median_cumulative_us for result in results] == [8, 10]
+    assert all(
+        result.python_executable == str(Path(sys.executable).resolve())
+        for result in results
+    )
+    assert all(options["cwd"] == tmp_path.resolve() for _, options in calls)
+    assert all(options["timeout"] == 4.0 for _, options in calls)
+    assert all(options["env"] is calls[0][1]["env"] for _, options in calls)
+    assert all(
+        options["env"]["IMPORTTIME_CHECK_SNAPSHOT"] == "original"
+        for _, options in calls
+    )
+    with pytest.raises(FrozenInstanceError):
+        results[0].samples = ()  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    ("modules", "message"),
+    (
+        (None, "non-empty sequence"),
+        (42, "non-empty sequence"),
+        ("alpha", "non-empty sequence"),
+        (b"alpha", "non-empty sequence"),
+        (iter(("alpha",)), "non-empty sequence"),
+        ((), "non-empty sequence"),
+        ([], "non-empty sequence"),
+        (("alpha", "alpha"), "distinct module names"),
+        (("alpha", "bad-name"), "dotted Python module name"),
+        (("alpha", 42), "dotted Python module name"),
+    ),
+    ids=(
+        "none",
+        "integer",
+        "string",
+        "bytes",
+        "iterator",
+        "empty-tuple",
+        "empty-list",
+        "duplicate",
+        "invalid-name",
+        "invalid-type",
+    ),
+)
+def test_batch_rejects_invalid_target_sets_before_starting_a_child(
+    monkeypatch: pytest.MonkeyPatch, modules: object, message: str
+) -> None:
+    def unexpected_run(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("subprocess should not start")
+
+    monkeypatch.setattr(subprocess, "run", unexpected_run)
+    with pytest.raises(ValueError, match=message):
+        sample_imports(cast(Any, modules))
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "message"),
+    (
+        ("python_executable", "python", "python_executable"),
+        ("timeout_seconds", 0, "timeout_seconds"),
+        ("working_directory", "", "working_directory"),
+        ("warmups", True, "warmups"),
+        ("samples", 0, "samples"),
+    ),
+)
+def test_batch_rejects_invalid_runtime_before_starting_a_child(
+    monkeypatch: pytest.MonkeyPatch, keyword: str, value: object, message: str
+) -> None:
+    def unexpected_run(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("subprocess should not start")
+
+    monkeypatch.setattr(subprocess, "run", unexpected_run)
+    with pytest.raises(ValueError, match=message):
+        sample_imports(("alpha", "zeta"), **cast(Any, {keyword: value}))
+
+
+def test_later_batch_failure_reports_target_and_run_without_partial_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    counts = {"alpha": 0, "zeta": 0}
+    calls: list[str] = []
+
+    def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        module = command[-1]
+        calls.append(module)
+        counts[module] += 1
+        if module == "zeta" and counts[module] == 3:
+            return subprocess.CompletedProcess(command, 7, None, "target failed")
+        return subprocess.CompletedProcess(
+            command, 0, None, f"import time: 1 | 2 | {module}"
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(ImportMeasurementError, match=r"zeta.*sample 2") as found:
+        sample_imports(("zeta", "alpha"), warmups=1, samples=2)
+    assert calls == ["alpha", "alpha", "alpha", "zeta", "zeta", "zeta"]
+    assert found.value.module == "zeta"
+    assert found.value.kind == "exit"
+    assert found.value.run_phase == "sample"
+    assert found.value.run_number == 2
+    assert found.value.returncode == 7
+    assert found.value.stderr == "target failed"
+
+
+def test_real_interpreter_batch_returns_complete_immutable_results(
+    tmp_path: Path,
+) -> None:
+    results = sample_imports(
+        ("json", "email.utils"),
+        python_executable=sys.executable,
+        working_directory=tmp_path,
+        warmups=0,
+        samples=1,
+    )
+    assert tuple(result.module for result in results) == ("email.utils", "json")
+    assert all(result.warmups == () and len(result.samples) == 1 for result in results)
+    assert all(
+        result.median_cumulative_us == result.samples[0].target_event.cumulative_us
+        for result in results
+    )
