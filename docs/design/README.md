@@ -29,6 +29,7 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 7. [0007: Baselines, regression decisions, and integration contract](0007-regression-and-integration-contract.md)
 8. [0008: Safe baseline refresh and comparison diagnostics](0008-safe-baseline-refresh-and-diagnostics.md)
 9. [0009: Per-target baseline budgets](0009-per-target-baseline-budgets.md)
+10. [0010: Multi-target measurement reports](0010-multi-target-measurement-reports.md)
 
 ## Lifecycle
 

@@ -58,6 +58,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0007-regression-and-integration-contract.md",
     "docs/design/0008-safe-baseline-refresh-and-diagnostics.md",
     "docs/design/0009-per-target-baseline-budgets.md",
+    "docs/design/0010-multi-target-measurement-reports.md",
     "docs/design/README.md",
     "docs/examples/check-importtime.yml",
     "docs/examples/record-importtime-baseline.yml",
