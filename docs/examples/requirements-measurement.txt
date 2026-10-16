@@ -1,4 +1,4 @@
-# Consuming-project example for 0.1.0a4 after it is published on PyPI.
+# Consuming-project example for 0.1.0a4; install after PyPI publication.
 # Replace packaging with a complete, reviewed lock of your installed targets.
 importtime-check==0.1.0a4
 packaging==26.3

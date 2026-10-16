@@ -12,11 +12,11 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-The source tree targets version `0.1.0a3`, the third alpha. After publication,
+The source tree targets version `0.1.0a4`, the fourth alpha. After publication,
 install this exact prerelease from PyPI with:
 
 ```console
-python -m pip install --pre importtime-check==0.1.0a3
+python -m pip install --pre importtime-check==0.1.0a4
 ```
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
@@ -127,11 +127,12 @@ Its JSON format reports ordered warmups, samples, and upper medians for each
 target, plus safe interpreter identity. It contains no approved baseline
 allowances or regression verdict. Capture it as reviewable evidence; do not
 interpret one run as a stable cross-machine performance comparison.
-The multi-target API and JSON command require the forthcoming `0.1.0a4`
-release; use a wheel built from this checkout until it is published. See the
-[measurement artifact guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/measurement-artifacts.md) for a
-manual, pinned consuming-project workflow that uploads observations without
-changing a baseline.
+The multi-target API and JSON command are new in `0.1.0a4`. Before it is
+published, use a wheel built from this checkout rather than PyPI's older
+release. The
+[measurement artifact guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/measurement-artifacts.md)
+shows a manual, pinned consuming-project workflow that uploads observations
+without changing a baseline.
 
 Version `0.1.0a3` also supports distinct, reviewed allowances for each
 recorded module. After installing the exact release above (or installing this
@@ -190,7 +191,7 @@ not prove that dependencies, hardware, or host load are comparable.
 
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
-publication, install `"importtime-check[pytest]==0.1.0a3"` instead of the
+publication, install `"importtime-check[pytest]==0.1.0a4"` instead of the
 editable checkout:
 
 ```console
@@ -244,7 +245,7 @@ See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blo
 for the complete contribution workflow and
 [SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
 for private vulnerability reporting.
-The [0.1.0a3 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a3.md) summarize changes,
+The [0.1.0a4 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a4.md) summarize changes,
 compatibility, and migration from earlier alphas.
 
 ## Current limits
