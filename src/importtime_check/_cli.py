@@ -50,8 +50,14 @@ from ._regression import (
     record_baseline,
     refresh_baseline,
 )
-from ._report import error_json, report_json, report_text
-from ._sampling import sample_import
+from ._report import (
+    error_json,
+    measurement_json,
+    measurement_text,
+    report_json,
+    report_text,
+)
+from ._sampling import sample_import, sample_imports
 
 _BUDGET_US = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
@@ -74,10 +80,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
-    measure = commands.add_parser("measure", help="sample one installed module")
-    measure.add_argument("--module", required=True)
+    measure = commands.add_parser("measure", help="sample installed modules")
+    measure.add_argument("--module", action="append", required=True)
     measure.add_argument("--warmups", type=int, default=1)
     measure.add_argument("--samples", type=int, default=5)
+    measure.add_argument("--format", choices=("text", "json"), default="text")
     _add_runtime(measure)
 
     baseline = commands.add_parser(
@@ -190,25 +197,30 @@ def _record_allowances(
 
 
 def _measure(arguments: argparse.Namespace) -> int:
-    _validate_module_name(arguments.module)
+    modules = _modules(arguments.module)
     policy = SamplingPolicy(arguments.warmups, arguments.samples)
     interpreter, timeout, directory = _runtime(arguments)
-    result = sample_import(
-        arguments.module,
+    environment = (
+        probe_environment(
+            python_executable=interpreter,
+            timeout_seconds=timeout,
+            working_directory=directory,
+        )
+        if arguments.format == "json"
+        else None
+    )
+    observations = sample_imports(
+        modules,
         python_executable=interpreter,
         timeout_seconds=timeout,
         working_directory=directory,
         warmups=policy.warmups,
         samples=policy.samples,
     )
-    print(f"{result.module}: upper median {result.median_cumulative_us} us")
-    print(
-        "warmups (us): "
-        + ", ".join(str(item.target_event.cumulative_us) for item in result.warmups)
-    )
-    print(
-        "samples (us): "
-        + ", ".join(str(item.target_event.cumulative_us) for item in result.samples)
+    sys.stdout.write(
+        measurement_json(observations, environment, policy)
+        if environment is not None
+        else measurement_text(observations)
     )
     return 0
 
@@ -404,6 +416,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         if arguments.command == "check" and arguments.format == "json":
             sys.stdout.write(error_json(error))
+        elif arguments.command == "measure" and isinstance(error, BaselineError):
+            print(
+                "importtime-check: selected interpreter could not be probed",
+                file=sys.stderr,
+            )
+        elif arguments.command == "measure" and isinstance(
+            error, ImportMeasurementError
+        ):
+            run = (
+                f" ({error.run_phase} {error.run_number})"
+                if error.run_phase is not None and error.run_number is not None
+                else ""
+            )
+            reason = "" if error.kind == "launch" else f": {error.reason}"
+            print(
+                f"importtime-check: {error.kind} while measuring "
+                f"{error.module!r}{run}{reason}",
+                file=sys.stderr,
+            )
         else:
             print(f"importtime-check: {error}", file=sys.stderr)
         return 2

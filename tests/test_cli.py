@@ -62,6 +62,13 @@ def _sample(module: str, **options: Any) -> ImportSampleSet:
 @pytest.fixture
 def synthetic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "sample_import", _sample)
+    monkeypatch.setattr(
+        cli,
+        "sample_imports",
+        lambda modules, **options: tuple(
+            _sample(module, **options) for module in modules
+        ),
+    )
     monkeypatch.setattr(regression, "sample_import", _sample)
     monkeypatch.setattr(cli, "probe_environment", lambda **options: ENV)
     monkeypatch.setattr(regression, "probe_environment", lambda **options: ENV)
@@ -385,6 +392,255 @@ def test_measure_and_record_show_workflows(
         cli.main(_record(path))
     assert error.value.code == 2
     assert "use --replace" in capsys.readouterr().err
+
+
+def test_measure_one_module_text_remains_byte_for_byte_compatible(
+    synthetic: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["measure", "--module", "json"]) == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert output.out == (
+        "json: upper median 150 us\n"
+        "warmups (us): 150\n"
+        "samples (us): 150, 150, 150, 150, 150\n"
+    )
+    assert (
+        cli.main(["measure", "--module", "json", "--warmups", "0", "--samples", "1"])
+        == 0
+    )
+    assert capsys.readouterr().out == (
+        "json: upper median 150 us\nwarmups (us): \nsamples (us): 150\n"
+    )
+
+
+def test_measure_multi_target_text_is_sorted_and_does_not_probe(
+    synthetic: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(**options: Any) -> None:
+        raise AssertionError("text measurement must not probe")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    assert (
+        cli.main(
+            [
+                "measure",
+                "--module",
+                "zeta",
+                "--module",
+                "json",
+                "--warmups",
+                "1",
+                "--samples",
+                "2",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert output.out == (
+        "json: upper median 150 us\n"
+        "warmups (us): 150\n"
+        "samples (us): 150, 150\n"
+        "zeta: upper median 90 us\n"
+        "warmups (us): 90\n"
+        "samples (us): 90, 90\n"
+    )
+
+
+def test_measure_json_is_canonical_and_uses_safe_probe_fields(
+    synthetic: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    def probe(**options: Any) -> EnvironmentIdentity:
+        calls.append(("probe", options))
+        return EnvironmentIdentity(
+            "cpython", "3.11", "win32", "amd64", profile="private-profile"
+        )
+
+    def batch(modules: tuple[str, ...], **options: Any) -> tuple[ImportSampleSet, ...]:
+        calls.append(("sample", {"modules": modules, **options}))
+        return tuple(_sample(module, **options) for module in modules)
+
+    monkeypatch.setattr(cli, "probe_environment", probe)
+    monkeypatch.setattr(cli, "sample_imports", batch)
+    arguments = [
+        "measure",
+        "--module",
+        "json",
+        "--module",
+        "email",
+        "--warmups",
+        "1",
+        "--samples",
+        "2",
+        "--working-directory",
+        str(tmp_path),
+        "--format",
+        "json",
+    ]
+    assert cli.main(arguments) == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    expected = {
+        "environment": {
+            "implementation": "cpython",
+            "machine": "amd64",
+            "platform": "win32",
+            "python": "3.11",
+        },
+        "report_type": "measurement",
+        "report_version": 1,
+        "sampling": {"samples": 2, "statistic": "upper_median", "warmups": 1},
+        "targets": {
+            "email": {
+                "samples_us": [90, 90],
+                "upper_median_us": 90,
+                "warmups_us": [90],
+            },
+            "json": {
+                "samples_us": [150, 150],
+                "upper_median_us": 150,
+                "warmups_us": [150],
+            },
+        },
+    }
+    assert json.loads(output.out) == expected
+    assert output.out == json.dumps(expected, sort_keys=True, indent=2) + "\n"
+    assert "private-profile" not in output.out
+    assert str(tmp_path) not in output.out
+    assert str(Path(sys.executable).resolve()) not in output.out
+    assert [kind for kind, _ in calls] == ["probe", "sample"]
+    assert calls[1][1]["modules"] == ("email", "json")
+    for _, options in calls:
+        assert options["python_executable"] == str(Path(sys.executable).resolve())
+        assert options["timeout_seconds"] == 30.0
+        assert options["working_directory"] == tmp_path.resolve()
+    assert calls[1][1]["warmups"] == 1
+    assert calls[1][1]["samples"] == 2
+
+
+@pytest.mark.parametrize(
+    ("extra", "message"),
+    (
+        (("--module", "bad-name"), "dotted Python module name"),
+        (("--module", "json"), "module names must not repeat"),
+        (("--samples", "0"), "samples"),
+        (("--warmups", "-1"), "warmups"),
+        (("--timeout-seconds", "0"), "timeout_seconds"),
+        (("--python", "python"), "python_executable"),
+    ),
+)
+def test_measure_invalid_inputs_stop_before_probe_or_import(
+    synthetic: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    extra: tuple[str, str],
+    message: str,
+) -> None:
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("invalid measure input must not start a child")
+
+    monkeypatch.setattr(cli, "probe_environment", forbidden)
+    monkeypatch.setattr(cli, "sample_imports", forbidden)
+    with pytest.raises(SystemExit) as found:
+        cli.main(["measure", "--module", "json", "--format", "json", *extra])
+    assert found.value.code == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert message in output.err
+
+
+@pytest.mark.parametrize("format_name", ("text", "json"))
+def test_measure_later_target_failure_has_no_partial_stdout(
+    synthetic: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    format_name: str,
+) -> None:
+    failure = ImportMeasurementError(
+        module="zeta",
+        kind="exit",
+        python_executable=str(Path(sys.executable).resolve()),
+        reason="child exited with code 7",
+        returncode=7,
+        stderr="private child stderr",
+        run_phase="sample",
+        run_number=2,
+    )
+
+    def fail(*args: Any, **kwargs: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(cli, "sample_imports", fail)
+    assert (
+        cli.main(
+            [
+                "measure",
+                "--module",
+                "json",
+                "--module",
+                "zeta",
+                "--format",
+                format_name,
+            ]
+        )
+        == 2
+    )
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "zeta" in output.err and "sample 2" in output.err
+    assert "private child stderr" not in output.err
+
+
+def test_measure_probe_and_launch_errors_hide_private_paths(
+    synthetic: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_path = r"C:\private\python.exe"
+
+    def bad_probe(**options: Any) -> None:
+        raise BaselineError("interpreter-probe-failed", private_path)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("sampling must not start after probe failure")
+
+    monkeypatch.setattr(cli, "probe_environment", bad_probe)
+    monkeypatch.setattr(cli, "sample_imports", forbidden)
+    arguments = ["measure", "--module", "json", "--format", "json"]
+    assert cli.main(arguments) == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "selected interpreter could not be probed" in output.err
+    assert private_path not in output.err
+    with pytest.raises(BaselineError):
+        cli.main(["--debug", *arguments])
+    capsys.readouterr()
+
+    failure = ImportMeasurementError(
+        module="json",
+        kind="launch",
+        python_executable=private_path,
+        reason=private_path,
+    )
+
+    def bad_launch(*args: Any, **kwargs: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(cli, "sample_imports", bad_launch)
+    assert cli.main(["measure", "--module", "json"]) == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "launch while measuring 'json'" in output.err
+    assert private_path not in output.err
 
 
 def test_record_per_target_budgets_are_sorted_normalized_and_reviewable(
@@ -784,6 +1040,7 @@ def test_measurement_error_has_distinct_exit_and_json_context(
         raise error
 
     monkeypatch.setattr(cli, "sample_import", fail)
+    monkeypatch.setattr(cli, "sample_imports", fail)
     assert cli.main(["measure", "--module", "json"]) == 2
     assert "timeout" in capsys.readouterr().err
     with pytest.raises(ImportMeasurementError):
