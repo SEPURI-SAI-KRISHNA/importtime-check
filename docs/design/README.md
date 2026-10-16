@@ -30,6 +30,7 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 8. [0008: Safe baseline refresh and comparison diagnostics](0008-safe-baseline-refresh-and-diagnostics.md)
 9. [0009: Per-target baseline budgets](0009-per-target-baseline-budgets.md)
 10. [0010: Multi-target measurement reports](0010-multi-target-measurement-reports.md)
+11. [0011: Offline measurement report cohorts](0011-offline-report-cohorts.md)
 
 ## Lifecycle
 
