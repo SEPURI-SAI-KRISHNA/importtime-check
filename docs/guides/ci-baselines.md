@@ -1,5 +1,9 @@
 # A reviewed import-time baseline in CI
 
+To collect several observations **without** approving a budget or gating a
+pull request, use the separate [measurement artifact guide](measurement-artifacts.md).
+The steps below create and check reviewed baseline policy.
+
 This is a small, runnable example for a **consuming project**. It measures the
 `packaging` and `packaging.version` modules as stand-ins for two of your own
 installed modules. The example files are

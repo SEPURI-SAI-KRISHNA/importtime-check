@@ -127,6 +127,11 @@ Its JSON format reports ordered warmups, samples, and upper medians for each
 target, plus safe interpreter identity. It contains no approved baseline
 allowances or regression verdict. Capture it as reviewable evidence; do not
 interpret one run as a stable cross-machine performance comparison.
+The multi-target API and JSON command require the forthcoming `0.1.0a4`
+release; use a wheel built from this checkout until it is published. See the
+[measurement artifact guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/measurement-artifacts.md) for a
+manual, pinned consuming-project workflow that uploads observations without
+changing a baseline.
 
 Version `0.1.0a3` also supports distinct, reviewed allowances for each
 recorded module. After installing the exact release above (or installing this
