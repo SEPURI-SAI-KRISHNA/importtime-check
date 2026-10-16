@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -62,7 +63,9 @@ def _environment_command(environment: Path) -> Path:
     return environment / scripts_directory / executable
 
 
-def _run(command: Sequence[str], *, cwd: Path | None = None) -> None:
+def _run(
+    command: Sequence[str], *, cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
     try:
         completed = subprocess.run(
             command,
@@ -81,6 +84,7 @@ def _run(command: Sequence[str], *, cwd: Path | None = None) -> None:
         raise WheelSmokeError(
             f"command failed with exit code {completed.returncode}: {detail}"
         )
+    return completed
 
 
 def smoke_wheel(dist_dir: Path) -> Path:
@@ -139,6 +143,42 @@ def smoke_wheel(dist_dir: Path) -> Path:
             ),
             cwd=temporary_path,
         )
+        measured = _run(
+            (
+                *command,
+                "measure",
+                "--module",
+                "json",
+                "--module",
+                "email",
+                "--warmups",
+                "0",
+                "--samples",
+                "1",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+        )
+        try:
+            report = json.loads(measured.stdout)
+            if (
+                not isinstance(report, dict)
+                or report.get("report_type") != "measurement"
+                or report.get("report_version") != 1
+                or not isinstance(report.get("targets"), dict)
+                or tuple(report["targets"]) != ("email", "json")
+                or any(
+                    target.get("warmups_us") != []
+                    or not isinstance(target.get("samples_us"), list)
+                    or len(target["samples_us"]) != 1
+                    or target.get("upper_median_us") != target["samples_us"][0]
+                    for target in report["targets"].values()
+                )
+            ):
+                raise ValueError("unexpected measurement report")
+        except (AttributeError, TypeError, ValueError) as error:
+            raise WheelSmokeError("invalid two-target measurement JSON") from error
         baseline = temporary_path / "baseline.json"
         _run(
             (

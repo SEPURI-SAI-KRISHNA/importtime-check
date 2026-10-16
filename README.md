@@ -115,11 +115,18 @@ The installed command supports measuring, recording, inspecting, and checking:
 
 ```console
 importtime-check measure --module json
+importtime-check measure --module email --module json --warmups 1 --samples 5 --format json
 importtime-check baseline record --output importtime-baseline.json --module json --max-increase-us 25 --max-increase-percent 10
 importtime-check baseline show --file importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json
 importtime-check check --baseline importtime-baseline.json --format json
 ```
+
+`measure` also accepts repeated `--module` values in its default text format.
+Its JSON format reports ordered warmups, samples, and upper medians for each
+target, plus safe interpreter identity. It contains no approved baseline
+allowances or regression verdict. Capture it as reviewable evidence; do not
+interpret one run as a stable cross-machine performance comparison.
 
 Version `0.1.0a3` also supports distinct, reviewed allowances for each
 recorded module. After installing the exact release above (or installing this

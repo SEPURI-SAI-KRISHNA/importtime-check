@@ -17,11 +17,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
-from ._baseline import BaselineError
+from ._baseline import BaselineError, EnvironmentIdentity, SamplingPolicy
 from ._measurement import ImportMeasurementError
 from ._regression import RegressionReport
+from ._sampling import ImportSampleSet
 
 
 def _json(document: dict[str, Any]) -> str:
@@ -31,6 +33,63 @@ def _json(document: dict[str, Any]) -> str:
         )
         + "\n"
     )
+
+
+def measurement_json(
+    observations: Sequence[ImportSampleSet],
+    environment: EnvironmentIdentity,
+    sampling: SamplingPolicy,
+) -> str:
+    """Render a versioned observation without baseline policy or private paths."""
+    return _json(
+        {
+            "environment": {
+                "implementation": environment.implementation,
+                "python": environment.python,
+                "platform": environment.platform,
+                "machine": environment.machine,
+            },
+            "report_type": "measurement",
+            "report_version": 1,
+            "sampling": {
+                "warmups": sampling.warmups,
+                "samples": sampling.samples,
+                "statistic": sampling.statistic,
+            },
+            "targets": {
+                result.module: {
+                    "warmups_us": [
+                        run.target_event.cumulative_us for run in result.warmups
+                    ],
+                    "samples_us": [
+                        run.target_event.cumulative_us for run in result.samples
+                    ],
+                    "upper_median_us": result.median_cumulative_us,
+                }
+                for result in observations
+            },
+        }
+    )
+
+
+def measurement_text(observations: Sequence[ImportSampleSet]) -> str:
+    """Repeat the published one-target three-line text block in target order."""
+    lines: list[str] = []
+    for result in observations:
+        lines.extend(
+            (
+                f"{result.module}: upper median {result.median_cumulative_us} us",
+                "warmups (us): "
+                + ", ".join(
+                    str(run.target_event.cumulative_us) for run in result.warmups
+                ),
+                "samples (us): "
+                + ", ".join(
+                    str(run.target_event.cumulative_us) for run in result.samples
+                ),
+            )
+        )
+    return "\n".join(lines) + "\n"
 
 
 def report_json(report: RegressionReport) -> str:
