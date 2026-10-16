@@ -1,0 +1,58 @@
+name: Import-time measurement artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install pinned measurement environment
+        run: |
+          python -m pip install --requirement ci/requirements-measurement.txt
+          python -m pip check
+
+      - name: Collect and inspect complete observations
+        run: |
+          mkdir -p .tmp
+          importtime-check measure \
+            --module packaging --module packaging.version \
+            --warmups 1 --samples 7 --format json \
+            > .tmp/importtime-measurement.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          document = json.loads(Path('.tmp/importtime-measurement.json').read_text())
+          assert document['report_type'] == 'measurement'
+          assert document['report_version'] == 1
+          assert document['sampling'] == {
+              'samples': 7, 'statistic': 'upper_median', 'warmups': 1
+          }
+          assert set(document['targets']) == {'packaging', 'packaging.version'}
+          for target in document['targets'].values():
+              assert len(target['warmups_us']) == 1
+              assert len(target['samples_us']) == 7
+              assert target['upper_median_us'] in target['samples_us']
+          PY
+
+      - name: Upload observations for human review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: importtime-measurement
+          path: .tmp/importtime-measurement.json
+          if-no-files-found: error
