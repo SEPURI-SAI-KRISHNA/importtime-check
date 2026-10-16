@@ -27,6 +27,14 @@ from ._baseline import (
     save_baseline,
 )
 from ._measurement import ImportMeasurement, ImportMeasurementError, measure_import
+from ._measurement_report import (
+    MeasurementReport,
+    MeasurementReportError,
+    ReportIdentity,
+    ReportTarget,
+    decode_measurement_report,
+    load_measurement_report,
+)
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
 from ._regression import (
@@ -51,7 +59,11 @@ __all__ = (
     "ImportTimeEvent",
     "ImportTimeParseError",
     "ImportTimeParseResult",
+    "MeasurementReport",
+    "MeasurementReportError",
     "RegressionReport",
+    "ReportIdentity",
+    "ReportTarget",
     "SamplingPolicy",
     "TargetAllowance",
     "TargetBaseline",
@@ -59,9 +71,11 @@ __all__ = (
     "__version__",
     "check_baseline",
     "decode_baseline",
+    "decode_measurement_report",
     "encode_baseline",
     "evaluate_baseline",
     "load_baseline",
+    "load_measurement_report",
     "measure_import",
     "parse_importtime",
     "probe_environment",

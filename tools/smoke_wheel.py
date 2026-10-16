@@ -39,11 +39,26 @@ assert metadata.requires("importtime-check") == ["pytest>=9.1.1; extra == 'pytes
 assert util.find_spec("pytest") is None
 assert "pytest" not in sys.modules
 assert callable(importtime_check.refresh_baseline)
+assert callable(importtime_check.decode_measurement_report)
+assert callable(importtime_check.load_measurement_report)
 assert any(
     entry.name == "importtime-check"
     and entry.value == "importtime_check._cli:main"
     for entry in metadata.distribution("importtime-check").entry_points
 )
+"""
+
+REPORT_READER_PROGRAM = """
+from pathlib import Path
+import sys
+from importtime_check import decode_measurement_report, load_measurement_report
+
+path = Path(sys.argv[1])
+loaded = load_measurement_report(path)
+assert loaded == decode_measurement_report(path.read_bytes())
+assert tuple(loaded.targets) == ("email", "json")
+assert loaded.sampling.warmups == 0
+assert loaded.sampling.samples == 1
 """
 
 
@@ -179,6 +194,12 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 raise ValueError("unexpected measurement report")
         except (AttributeError, TypeError, ValueError) as error:
             raise WheelSmokeError("invalid two-target measurement JSON") from error
+        report_file = temporary_path / "measurement.json"
+        report_file.write_bytes(measured.stdout.encode("utf-8"))
+        _run(
+            (str(python), "-I", "-c", REPORT_READER_PROGRAM, str(report_file)),
+            cwd=temporary_path,
+        )
         baseline = temporary_path / "baseline.json"
         _run(
             (
