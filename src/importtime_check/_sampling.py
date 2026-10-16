@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -102,6 +103,66 @@ def sample_import(
     warmup_count = _count(warmups, "warmups", 0)
     sample_count = _count(samples, "samples", 1)
     environment = os.environ.copy()
+    return _sample_import_validated(
+        module,
+        interpreter,
+        timeout,
+        directory,
+        environment,
+        warmup_count,
+        sample_count,
+    )
+
+
+def sample_imports(
+    modules: Sequence[str],
+    *,
+    python_executable: str | os.PathLike[str] | None = None,
+    timeout_seconds: float = 30.0,
+    working_directory: str | os.PathLike[str] | None = None,
+    warmups: int = 1,
+    samples: int = 5,
+) -> tuple[ImportSampleSet, ...]:
+    """Sample distinct targets sequentially with one captured runtime context."""
+    if not isinstance(modules, Sequence) or isinstance(modules, (str, bytes)):
+        raise ValueError("modules must be a non-empty sequence of module names")
+    selected = tuple(modules)
+    if not selected:
+        raise ValueError("modules must be a non-empty sequence of module names")
+    for module in selected:
+        _validate_module_name(module)
+    if len(selected) != len(set(selected)):
+        raise ValueError("modules must contain distinct module names")
+    interpreter = _interpreter_path(python_executable)
+    timeout = _timeout(timeout_seconds)
+    directory = _working_directory(working_directory)
+    warmup_count = _count(warmups, "warmups", 0)
+    sample_count = _count(samples, "samples", 1)
+    environment = os.environ.copy()
+    return tuple(
+        _sample_import_validated(
+            module,
+            interpreter,
+            timeout,
+            directory,
+            environment,
+            warmup_count,
+            sample_count,
+        )
+        for module in sorted(selected)
+    )
+
+
+def _sample_import_validated(
+    module: str,
+    interpreter: str,
+    timeout: float,
+    directory: Path,
+    environment: dict[str, str],
+    warmup_count: int,
+    sample_count: int,
+) -> ImportSampleSet:
+    """Run one target after the complete request has been validated."""
 
     def run(phase: Literal["warmup", "sample"], number: int) -> ImportMeasurement:
         try:
