@@ -153,6 +153,7 @@ def test_public_exports_are_exact() -> None:
     assert importtime_check.__all__ == (
         "Baseline",
         "BaselineError",
+        "CohortSummary",
         "EnvironmentIdentity",
         "ImportMeasurement",
         "ImportMeasurementError",
@@ -168,6 +169,7 @@ def test_public_exports_are_exact() -> None:
         "SamplingPolicy",
         "TargetAllowance",
         "TargetBaseline",
+        "TargetCohortSummary",
         "TargetRegressionResult",
         "__version__",
         "check_baseline",
@@ -185,4 +187,5 @@ def test_public_exports_are_exact() -> None:
         "sample_import",
         "sample_imports",
         "save_baseline",
+        "summarize_measurement_reports",
     )

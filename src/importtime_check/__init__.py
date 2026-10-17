@@ -26,6 +26,7 @@ from ._baseline import (
     load_baseline,
     save_baseline,
 )
+from ._cohort import CohortSummary, TargetCohortSummary, summarize_measurement_reports
 from ._measurement import ImportMeasurement, ImportMeasurementError, measure_import
 from ._measurement_report import (
     MeasurementReport,
@@ -52,6 +53,7 @@ from ._version import __version__
 __all__ = (
     "Baseline",
     "BaselineError",
+    "CohortSummary",
     "EnvironmentIdentity",
     "ImportMeasurement",
     "ImportMeasurementError",
@@ -67,6 +69,7 @@ __all__ = (
     "SamplingPolicy",
     "TargetAllowance",
     "TargetBaseline",
+    "TargetCohortSummary",
     "TargetRegressionResult",
     "__version__",
     "check_baseline",
@@ -84,4 +87,5 @@ __all__ = (
     "sample_import",
     "sample_imports",
     "save_baseline",
+    "summarize_measurement_reports",
 )
