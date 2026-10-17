@@ -107,6 +107,7 @@ EXPECTED_SDIST_FILES = (
     "tests/test_regression.py",
     "tests/test_release_preflight.py",
     "tests/test_report.py",
+    "tests/test_report_cli.py",
     "tests/test_sampling.py",
     "tools/__init__.py",
     "tools/check_dco.py",

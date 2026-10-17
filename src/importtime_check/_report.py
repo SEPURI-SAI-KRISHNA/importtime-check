@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from ._baseline import BaselineError, EnvironmentIdentity, SamplingPolicy
+from ._cohort import CohortSummary
 from ._measurement import ImportMeasurementError
 from ._regression import RegressionReport
 from ._sampling import ImportSampleSet
@@ -89,6 +90,66 @@ def measurement_text(observations: Sequence[ImportSampleSet]) -> str:
                 ),
             )
         )
+    return "\n".join(lines) + "\n"
+
+
+def _cohort_summary_document(summary: CohortSummary) -> dict[str, Any]:
+    """Build the independently versioned, descriptive cohort JSON shape."""
+    return {
+        "analysis_type": "cohort_summary",
+        "analysis_version": 1,
+        "environment": {
+            "implementation": summary.environment.implementation,
+            "python": summary.environment.python,
+            "platform": summary.environment.platform,
+            "machine": summary.environment.machine,
+        },
+        "sampling": {
+            "warmups": summary.sampling.warmups,
+            "samples": summary.sampling.samples,
+            "statistic": summary.sampling.statistic,
+        },
+        "runner_context": summary.runner_context,
+        "install_context": summary.install_context,
+        "report_count": summary.report_count,
+        "sources_sha256": list(summary.sources_sha256),
+        "targets": {
+            module: {
+                "run_medians_us": list(target.run_medians_us),
+                "observed_median_us": target.observed_median_us,
+                "min_us": target.min_us,
+                "max_us": target.max_us,
+                "spread_us": target.spread_us,
+            }
+            for module, target in summary.targets.items()
+        },
+    }
+
+
+def cohort_summary_json(summary: CohortSummary) -> str:
+    """Render a deterministic analysis-v1 summary, without a verdict."""
+    return _json(_cohort_summary_document(summary))
+
+
+def cohort_summary_text(summary: CohortSummary) -> str:
+    """Render caller-declared context and observed per-target variation."""
+    identity = summary.environment
+    sampling = summary.sampling
+    lines = [
+        f"Cohort: {summary.report_count} reports; "
+        f"runner {summary.runner_context}; install {summary.install_context}",
+        f"Environment: {identity.implementation} {identity.python}, "
+        f"{identity.platform}/{identity.machine}",
+        f"Sampling: {sampling.warmups} warmup(s), "
+        f"{sampling.samples} recorded sample(s), {sampling.statistic}",
+    ]
+    for module, target in summary.targets.items():
+        lines.append(
+            f"{module}: observed median {target.observed_median_us} us; "
+            f"range {target.min_us}..{target.max_us} us; "
+            f"spread {target.spread_us} us"
+        )
+    lines.append("Descriptive only; no regression verdict.")
     return "\n".join(lines) + "\n"
 
 
