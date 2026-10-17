@@ -100,16 +100,23 @@ from importtime_check import (
 
 before = summarize_measurement_reports(
     tuple(load_measurement_report(p) for p in ("before-1.json", "before-2.json")),
-    runner_context="ubuntu24-py311", install_context="build-before",
+    runner_context="ubuntu24-py311",
+    install_context="build-before",
 )
 after = summarize_measurement_reports(
     tuple(load_measurement_report(p) for p in ("after-1.json", "after-2.json")),
-    runner_context="ubuntu24-py311", install_context="build-after",
+    runner_context="ubuntu24-py311",
+    install_context="build-after",
 )
 comparison = compare_report_cohorts(before, after)
 for module, change in comparison.changes.items():
-    print(module, change.change_us, change.change_percent,
-          before.targets[module].spread_us, after.targets[module].spread_us)
+    print(
+        module,
+        change.change_us,
+        change.change_percent,
+        before.targets[module].spread_us,
+        after.targets[module].spread_us,
+    )
 ```
 
 The comparison retains both complete cohorts, including their ranges and
