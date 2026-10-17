@@ -88,6 +88,46 @@ write a baseline. The JSON has its own `analysis_type` and
 `analysis_version`; it is not a measurement or baseline document. This is a
 single-cohort view; before/after comparison is tracked separately.
 
+The development Python API can compare two such reviewed cohorts before the
+separate comparison CLI is available:
+
+```python
+from importtime_check import (
+    compare_report_cohorts,
+    load_measurement_report,
+    summarize_measurement_reports,
+)
+
+before = summarize_measurement_reports(
+    tuple(load_measurement_report(p) for p in ("before-1.json", "before-2.json")),
+    runner_context="ubuntu24-py311",
+    install_context="build-before",
+)
+after = summarize_measurement_reports(
+    tuple(load_measurement_report(p) for p in ("after-1.json", "after-2.json")),
+    runner_context="ubuntu24-py311",
+    install_context="build-after",
+)
+comparison = compare_report_cohorts(before, after)
+for module, change in comparison.changes.items():
+    print(
+        module,
+        change.change_us,
+        change.change_percent,
+        before.targets[module].spread_us,
+        after.targets[module].spread_us,
+    )
+```
+
+The comparison retains both complete cohorts, including their ranges and
+source digests. It requires matching runner context, reported identity,
+sampling, and target set; invalid inputs raise `MeasurementReportError` with
+`cohort-invalid` or `cohort-mismatch`. Different installation labels are
+allowed for the intended change. Percentage change is `None` when the before
+median is zero, and may round to `0.00` for a nonzero microsecond shift; read
+the signed `change_us` too. This API has no verdict and does not write a
+baseline.
+
 ## Upload an observation-only CI artifact
 
 1. Copy `docs/examples/requirements-measurement.txt` to
