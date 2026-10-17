@@ -53,6 +53,7 @@ import json
 from pathlib import Path
 import sys
 from importtime_check import (
+    compare_report_cohorts,
     decode_measurement_report,
     load_measurement_report,
     summarize_measurement_reports,
@@ -76,6 +77,21 @@ assert summary.report_count == 2
 assert tuple(summary.targets) == ("email", "json")
 assert summary.targets["email"].spread_us == 1
 assert summary.sources_sha256 == tuple(sorted((loaded.source_sha256, second.source_sha256)))
+after_reports = []
+for shift in (2, 3):
+    document = json.loads(path.read_bytes())
+    target = document["targets"]["email"]
+    target["samples_us"][0] += shift
+    target["upper_median_us"] += shift
+    after_reports.append(decode_measurement_report(json.dumps(document)))
+after = summarize_measurement_reports(
+    after_reports, runner_context="wheel-smoke", install_context="wheel-after"
+)
+comparison = compare_report_cohorts(summary, after)
+assert comparison.changes["email"].change_us == 2
+assert comparison.before.targets["email"].spread_us == 1
+assert comparison.after.targets["email"].spread_us == 1
+assert not hasattr(comparison, "status")
 """
 
 

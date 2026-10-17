@@ -99,6 +99,7 @@ EXPECTED_SDIST_FILES = (
     "tests/test_check_dco.py",
     "tests/test_cli.py",
     "tests/test_cohort.py",
+    "tests/test_cohort_comparison.py",
     "tests/test_measurement.py",
     "tests/test_measurement_report.py",
     "tests/test_package_contract.py",

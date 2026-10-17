@@ -120,6 +120,89 @@ class CohortSummary:
         object.__setattr__(self, "report_count", len(sources))
 
 
+@dataclass(frozen=True, slots=True)
+class TargetCohortChange:
+    """An observed signed shift, separate from reviewed baseline policy."""
+
+    before_us: int
+    after_us: int
+    change_us: int = field(init=False)
+    change_percent: str | None = field(init=False)
+
+    def __post_init__(self) -> None:
+        before = _timing(self.before_us, "before_us")
+        after = _timing(self.after_us, "after_us")
+        change = after - before
+        percent: str | None = None
+        if before != 0:
+            scaled, remainder = divmod(abs(change) * 10_000, before)
+            hundredths = scaled + (2 * remainder >= before)
+            sign = "+" if change > 0 else "-" if change < 0 else ""
+            if hundredths == 0:
+                sign = ""
+            percent = f"{sign}{hundredths // 100}.{hundredths % 100:02d}"
+        object.__setattr__(self, "change_us", change)
+        object.__setattr__(self, "change_percent", percent)
+
+
+@dataclass(frozen=True, slots=True)
+class CohortComparison:
+    """Two compatible complete cohorts and their descriptive target shifts."""
+
+    before: CohortSummary
+    after: CohortSummary
+    changes: Mapping[str, TargetCohortChange] = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.before, CohortSummary) or not isinstance(
+            self.after, CohortSummary
+        ):
+            raise MeasurementReportError(
+                "cohort-invalid", "comparison requires two cohort summaries"
+            )
+        differences: list[str] = []
+        for name in ("implementation", "python", "platform", "machine"):
+            if getattr(self.before.environment, name) != getattr(
+                self.after.environment, name
+            ):
+                differences.append(f"environment.{name}")
+        for name in ("warmups", "samples", "statistic"):
+            if getattr(self.before.sampling, name) != getattr(
+                self.after.sampling, name
+            ):
+                differences.append(f"sampling.{name}")
+        if self.before.runner_context != self.after.runner_context:
+            differences.append("runner_context")
+        if set(self.before.targets) != set(self.after.targets):
+            differences.append("targets")
+        if differences:
+            raise MeasurementReportError(
+                "cohort-mismatch",
+                "cohorts differ in identity, sampling, runner context, or targets",
+                differing_fields=tuple(differences),
+            )
+        object.__setattr__(
+            self,
+            "changes",
+            MappingProxyType(
+                {
+                    module: TargetCohortChange(
+                        target.observed_median_us,
+                        self.after.targets[module].observed_median_us,
+                    )
+                    for module, target in self.before.targets.items()
+                }
+            ),
+        )
+
+
+def compare_report_cohorts(
+    before: CohortSummary, after: CohortSummary
+) -> CohortComparison:
+    """Compare two caller-controlled cohorts without a regression verdict."""
+    return CohortComparison(before, after)
+
+
 def _differing_fields(
     reference: MeasurementReport, report: MeasurementReport
 ) -> tuple[str, ...]:
