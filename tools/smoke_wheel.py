@@ -49,9 +49,14 @@ assert any(
 """
 
 REPORT_READER_PROGRAM = """
+import json
 from pathlib import Path
 import sys
-from importtime_check import decode_measurement_report, load_measurement_report
+from importtime_check import (
+    decode_measurement_report,
+    load_measurement_report,
+    summarize_measurement_reports,
+)
 
 path = Path(sys.argv[1])
 loaded = load_measurement_report(path)
@@ -59,6 +64,18 @@ assert loaded == decode_measurement_report(path.read_bytes())
 assert tuple(loaded.targets) == ("email", "json")
 assert loaded.sampling.warmups == 0
 assert loaded.sampling.samples == 1
+second_document = json.loads(path.read_bytes())
+second_target = second_document["targets"]["email"]
+second_target["samples_us"][0] += 1
+second_target["upper_median_us"] += 1
+second = decode_measurement_report(json.dumps(second_document))
+summary = summarize_measurement_reports(
+    (second, loaded), runner_context="wheel-smoke", install_context="wheel-under-test"
+)
+assert summary.report_count == 2
+assert tuple(summary.targets) == ("email", "json")
+assert summary.targets["email"].spread_us == 1
+assert summary.sources_sha256 == tuple(sorted((loaded.source_sha256, second.source_sha256)))
 """
 
 

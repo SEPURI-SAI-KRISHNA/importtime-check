@@ -36,6 +36,7 @@ EXPECTED_LICENSE_FILES = frozenset({"LICENSE", "NOTICE"})
 EXPECTED_PACKAGE_FILES = (
     "__init__.py",
     "_baseline.py",
+    "_cohort.py",
     "_cli.py",
     "_measurement.py",
     "_measurement_report.py",
@@ -81,6 +82,7 @@ EXPECTED_SDIST_FILES = (
     "pyproject.toml",
     "src/importtime_check/__init__.py",
     "src/importtime_check/_baseline.py",
+    "src/importtime_check/_cohort.py",
     "src/importtime_check/_cli.py",
     "src/importtime_check/_measurement.py",
     "src/importtime_check/_measurement_report.py",
@@ -96,6 +98,7 @@ EXPECTED_SDIST_FILES = (
     "tests/test_baseline.py",
     "tests/test_check_dco.py",
     "tests/test_cli.py",
+    "tests/test_cohort.py",
     "tests/test_measurement.py",
     "tests/test_measurement_report.py",
     "tests/test_package_contract.py",
