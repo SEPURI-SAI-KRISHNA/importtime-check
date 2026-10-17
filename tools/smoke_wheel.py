@@ -217,6 +217,42 @@ def smoke_wheel(dist_dir: Path) -> Path:
             (str(python), "-I", "-c", REPORT_READER_PROGRAM, str(report_file)),
             cwd=temporary_path,
         )
+        second_report = temporary_path / "measurement-second.json"
+        second_document = json.loads(measured.stdout)
+        second_target = second_document["targets"]["email"]
+        second_target["samples_us"][0] += 1
+        second_target["upper_median_us"] += 1
+        second_report.write_text(json.dumps(second_document), encoding="utf-8")
+        summarized = _run(
+            (
+                *command,
+                "report",
+                "summarize",
+                "--file",
+                str(report_file),
+                "--file",
+                str(second_report),
+                "--runner-context",
+                "wheel-smoke",
+                "--install-context",
+                "wheel-under-test",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+        )
+        try:
+            cohort = json.loads(summarized.stdout)
+            if (
+                cohort.get("analysis_type") != "cohort_summary"
+                or cohort.get("analysis_version") != 1
+                or cohort.get("report_count") != 2
+                or tuple(cohort.get("targets", {})) != ("email", "json")
+                or cohort["targets"]["email"]["spread_us"] != 1
+            ):
+                raise ValueError("unexpected cohort summary")
+        except (AttributeError, KeyError, TypeError, ValueError) as error:
+            raise WheelSmokeError("invalid cohort summary JSON") from error
         baseline = temporary_path / "baseline.json"
         _run(
             (

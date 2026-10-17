@@ -36,12 +36,18 @@ from ._baseline import (
     load_baseline,
     save_baseline,
 )
+from ._cohort import summarize_measurement_reports
 from ._measurement import (
     ImportMeasurementError,
     _interpreter_path,
     _timeout,
     _validate_module_name,
     _working_directory,
+)
+from ._measurement_report import (
+    MeasurementReport,
+    MeasurementReportError,
+    load_measurement_report,
 )
 from ._regression import (
     _require_same_environment,
@@ -51,6 +57,8 @@ from ._regression import (
     refresh_baseline,
 )
 from ._report import (
+    cohort_summary_json,
+    cohort_summary_text,
     error_json,
     measurement_json,
     measurement_text,
@@ -86,6 +94,16 @@ def _parser() -> argparse.ArgumentParser:
     measure.add_argument("--samples", type=int, default=5)
     measure.add_argument("--format", choices=("text", "json"), default="text")
     _add_runtime(measure)
+
+    report = commands.add_parser("report", help="analyze saved measurement reports")
+    report_commands = report.add_subparsers(dest="report_command", required=True)
+    summarize = report_commands.add_parser(
+        "summarize", help="summarize a comparable report cohort"
+    )
+    summarize.add_argument("--file", action="append", required=True)
+    summarize.add_argument("--runner-context", required=True)
+    summarize.add_argument("--install-context", required=True)
+    summarize.add_argument("--format", choices=("text", "json"), default="text")
 
     baseline = commands.add_parser(
         "baseline", help="record, refresh, or inspect a baseline"
@@ -397,6 +415,32 @@ def _check(arguments: argparse.Namespace) -> int:
     return 1 if result.status == "regression" else 0
 
 
+def _summarize(arguments: argparse.Namespace) -> int:
+    if not 2 <= len(arguments.file) <= 64:
+        raise MeasurementReportError(
+            "cohort-invalid", "cohort must contain 2 to 64 reports"
+        )
+    reports: list[MeasurementReport] = []
+    for index, path in enumerate(arguments.file, start=1):
+        try:
+            reports.append(load_measurement_report(path))
+        except MeasurementReportError as error:
+            raise MeasurementReportError(
+                error.kind, error.reason, source_index=index
+            ) from error
+    summary = summarize_measurement_reports(
+        reports,
+        runner_context=arguments.runner_context,
+        install_context=arguments.install_context,
+    )
+    sys.stdout.write(
+        cohort_summary_json(summary)
+        if arguments.format == "json"
+        else cohort_summary_text(summary)
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run one CLI workflow and return its stable process exit code."""
     parser = _parser()
@@ -404,6 +448,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if arguments.command == "measure":
             return _measure(arguments)
+        if arguments.command == "report":
+            return _summarize(arguments)
         if arguments.command == "baseline":
             if arguments.baseline_command == "record":
                 return _record(arguments)
@@ -411,6 +457,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return _show(arguments)
             return _refresh(arguments)
         return _check(arguments)
+    except MeasurementReportError as error:
+        if arguments.debug:
+            raise
+        location = (
+            f" at report #{error.source_index}"
+            if error.source_index is not None
+            else ""
+        )
+        fields = (
+            f" ({', '.join(error.differing_fields)})" if error.differing_fields else ""
+        )
+        print(f"importtime-check: {error.kind}{location}{fields}", file=sys.stderr)
+        return 2
     except (BaselineError, ImportMeasurementError) as error:
         if arguments.debug:
             raise

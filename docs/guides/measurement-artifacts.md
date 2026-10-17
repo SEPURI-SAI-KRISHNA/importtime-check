@@ -65,6 +65,29 @@ comparability: Python patch level, dependency updates, CPU contention,
 hardware, runner image, and import side effects can change timings. A
 single report cannot justify a tight threshold or a cross-host comparison.
 
+## Summarize a controlled cohort
+
+The `report summarize` command is available in the development wheel for
+`0.2.0a1` (and in that release once published); the `0.1.0a4` pin used by
+the collection workflow above does not include it. Download at least two
+complete JSON reports from the same controlled runner class and intended
+installed revision/dependency state, then run:
+
+```console
+importtime-check report summarize --file run-1.json --file run-2.json --runner-context ubuntu24-py311 --install-context build-before
+importtime-check report summarize --file run-1.json --file run-2.json --runner-context ubuntu24-py311 --install-context build-before --format json
+```
+
+These context labels are caller assertions, not verified environment hashes.
+Retain the exact runner definition, lockfile, and revision beside the source
+artifacts. The command validates every file and checks matching reported
+identity, sampling, and target set before printing; invalid input exits `2`
+with empty stdout. It shows each target's observed median of complete-run
+medians, range, and spread, but does not decide whether a change regressed or
+write a baseline. The JSON has its own `analysis_type` and
+`analysis_version`; it is not a measurement or baseline document. This is a
+single-cohort view; before/after comparison is tracked separately.
+
 ## Upload an observation-only CI artifact
 
 1. Copy `docs/examples/requirements-measurement.txt` to
