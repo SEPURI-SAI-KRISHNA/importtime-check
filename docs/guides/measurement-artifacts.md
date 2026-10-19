@@ -128,6 +128,20 @@ median is zero, and may round to `0.00` for a nonzero microsecond shift; read
 the signed `change_us` too. This API has no verdict and does not write a
 baseline.
 
+The corresponding development CLI compares the same four files without
+writing an analysis file or changing baseline policy:
+
+```console
+importtime-check report compare --before-file before-1.json --before-file before-2.json --after-file after-1.json --after-file after-2.json --runner-context ubuntu24-py311 --before-install-context build-before --after-install-context build-after
+importtime-check report compare --before-file before-1.json --before-file before-2.json --after-file after-1.json --after-file after-2.json --runner-context ubuntu24-py311 --before-install-context build-before --after-install-context build-after --format json
+```
+
+Its text output shows signed microseconds, percentage or `n/a`, and both
+observed spreads. Versioned JSON embeds both complete cohort summaries and
+per-target changes. Invalid or non-comparable input exits `2` with empty
+stdout; success exits `0` without a regression verdict. The published
+`0.1.0a4` package does not include this development command.
+
 ## Upload an observation-only CI artifact
 
 1. Copy `docs/examples/requirements-measurement.txt` to
