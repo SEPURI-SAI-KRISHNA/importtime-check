@@ -31,9 +31,11 @@ from tools.validate_artifacts import ArtifactValidationError, discover_artifacts
 SMOKE_PROGRAM = """
 from importlib import metadata
 from importlib import util
+from pathlib import Path
 import sys
 import importtime_check
 
+assert Path(importtime_check.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 assert importtime_check.__version__ == metadata.version("importtime-check")
 assert metadata.requires("importtime-check") == ["pytest>=9.1.1; extra == 'pytest'"]
 assert util.find_spec("pytest") is None
@@ -99,6 +101,13 @@ class WheelSmokeError(RuntimeError):
     """The built wheel could not satisfy its clean-install contract."""
 
 
+def _clean_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    environment.pop("PYTHONHOME", None)
+    return environment
+
+
 def _environment_python(environment: Path) -> Path:
     scripts_directory = "Scripts" if os.name == "nt" else "bin"
     executable = "python.exe" if os.name == "nt" else "python"
@@ -124,6 +133,7 @@ def _run(
             encoding="utf-8",
             errors="replace",
             timeout=120,
+            env=_clean_environment(),
         )
     except subprocess.TimeoutExpired as error:
         raise WheelSmokeError("command timed out after 120 seconds") from error
@@ -133,6 +143,30 @@ def _run(
             f"command failed with exit code {completed.returncode}: {detail}"
         )
     return completed
+
+
+def _expect_report_error(command: Sequence[str], *, cwd: Path, expected: str) -> None:
+    """Require the installed command to reject bad reports without stdout."""
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            env=_clean_environment(),
+        )
+    except subprocess.TimeoutExpired as error:
+        raise WheelSmokeError("rejected report command timed out") from error
+    if (
+        completed.returncode != 2
+        or completed.stdout != ""
+        or completed.stderr.strip() != expected
+    ):
+        raise WheelSmokeError("installed command did not safely reject a bad report")
 
 
 def smoke_wheel(dist_dir: Path) -> Path:
@@ -314,6 +348,60 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 raise ValueError("unexpected cohort comparison")
         except (AttributeError, KeyError, TypeError, ValueError) as error:
             raise WheelSmokeError("invalid cohort comparison JSON") from error
+        malformed = temporary_path / "malformed.json"
+        malformed.write_text(
+            '{"report_type":"measurement","report_version":1,"report_version":1}',
+            encoding="utf-8",
+        )
+        _expect_report_error(
+            (
+                *command,
+                "report",
+                "summarize",
+                "--file",
+                str(report_file),
+                "--file",
+                str(malformed),
+                "--runner-context",
+                "wheel-smoke",
+                "--install-context",
+                "wheel-under-test",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+            expected="importtime-check: report-invalid at report #2",
+        )
+        future = temporary_path / "future.json"
+        future.write_text(
+            '{"report_type":"measurement","report_version":2}',
+            encoding="utf-8",
+        )
+        _expect_report_error(
+            (
+                *command,
+                "report",
+                "compare",
+                "--before-file",
+                str(report_file),
+                "--before-file",
+                str(second_report),
+                "--after-file",
+                str(after_files[0]),
+                "--after-file",
+                str(future),
+                "--runner-context",
+                "wheel-smoke",
+                "--before-install-context",
+                "wheel-under-test",
+                "--after-install-context",
+                "wheel-after",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+            expected="importtime-check: report-unsupported at after report #2",
+        )
         baseline = temporary_path / "baseline.json"
         _run(
             (
