@@ -1,0 +1,27 @@
+{
+  "environment": {
+    "implementation": "cpython",
+    "machine": "x86_64",
+    "platform": "linux",
+    "python": "3.11"
+  },
+  "report_type": "measurement",
+  "report_version": 1,
+  "sampling": {
+    "samples": 3,
+    "statistic": "upper_median",
+    "warmups": 1
+  },
+  "targets": {
+    "email": {
+      "samples_us": [12, 14, 16],
+      "upper_median_us": 14,
+      "warmups_us": [17]
+    },
+    "json": {
+      "samples_us": [45, 47, 49],
+      "upper_median_us": 47,
+      "warmups_us": [50]
+    }
+  }
+}
