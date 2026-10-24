@@ -75,6 +75,7 @@ EXPECTED_SDIST_FILES = (
     "docs/releases/v0.1.0a2.md",
     "docs/releases/v0.1.0a3.md",
     "docs/releases/v0.1.0a4.md",
+    "docs/releases/v0.2.0a1.md",
     "LICENSE",
     "NOTICE",
     "README.md",

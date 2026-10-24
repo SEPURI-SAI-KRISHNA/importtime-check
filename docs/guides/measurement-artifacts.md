@@ -9,17 +9,19 @@ performance regressed.
 
 The [manual workflow](../examples/collect-importtime-measurement.yml) and
 [exact requirements](../examples/requirements-measurement.txt) target
-`importtime-check==0.1.0a4`, `packaging==26.3`, CPython 3.11, and the
-`ubuntu-24.04` runner label. The published `0.1.0a4` wheel collects these
-reports; the `report summarize` and `report compare` commands below are
-development features planned for `0.2.0a1`, not yet in that PyPI release.
+`importtime-check==0.2.0a1`, `packaging==26.3`, CPython 3.11, and the
+`ubuntu-24.04` runner label. The tool pin becomes installable after
+`0.2.0a1` is published. Before then, use a clean wheel built from the
+reviewed source to try these commands. The published `0.1.0a4` wheel can
+collect the same v1 reports, but lacks `report summarize` and `report compare`.
 
 ## Try the report locally
 
 Install the selected targets and a suitable `importtime-check` wheel into the
 same clean environment. The example targets are installed by the exact
-`packaging==26.3` pin; the example requirements file also pins the published
-collector:
+`packaging==26.3` pin; the example requirements file also pins the candidate
+tool version. Run the install command only after publication, or replace its
+tool pin with a clean wheel built from reviewed source:
 
 ```console
 python -m pip install --requirement ci/requirements-measurement.txt
@@ -93,10 +95,10 @@ the cohorts as comparable. Do not select a threshold from one favorable run.
 
 ## Summarize a controlled cohort
 
-The `report summarize` command is available in a clean wheel built from the
-reviewed development source for `0.2.0a1`; the published `0.1.0a4` collector
-above does not include it. Keep each downloaded three-file set complete and
-use a separate environment with that development wheel for offline analysis.
+The `report summarize` command is in `0.2.0a1`. Until publication, use a
+clean wheel built from the reviewed source. Keep each downloaded three-file
+set complete and use a separate environment with that version for offline
+analysis. Version-1 files collected by `0.1.0a4` are also valid inputs.
 For the first artifact, run:
 
 ```console
@@ -121,7 +123,7 @@ target. A large spread relative to the observed shift is a reason to
 investigate and collect more evidence, not to delete a slow run. This is a
 single-cohort view, not an approved performance gate.
 
-The development Python API can also compare two such reviewed cohorts:
+The Python API can also compare two such reviewed cohorts:
 
 ```python
 from importtime_check import (
@@ -166,7 +168,7 @@ median is zero, and may round to `0.00` for a nonzero microsecond shift; read
 the signed `change_us` too. This API has no verdict and does not write a
 baseline.
 
-The corresponding development CLI compares the same six files without
+The corresponding CLI compares the same six files without
 writing an analysis file or changing baseline policy:
 
 ```console
@@ -177,8 +179,8 @@ importtime-check report compare --before-file before/importtime-measurement-1.js
 Its text output shows signed microseconds, percentage or `n/a`, and both
 observed spreads. Versioned JSON embeds both complete cohort summaries and
 per-target changes. Invalid or non-comparable input exits `2` with empty
-stdout; success exits `0` without a regression verdict. The published
-`0.1.0a4` package does not include this development command.
+stdout; success exits `0` without a regression verdict. This command is new
+in `0.2.0a1` and is not in the published `0.1.0a4` package.
 
 If either command reports `cohort-mismatch`, read the named fields: for
 example, `sampling.samples`, `environment.python`, or `targets`. Check that
