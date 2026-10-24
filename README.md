@@ -12,8 +12,8 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-The source tree targets version `0.1.0a4`, the fourth alpha. After publication,
-install this exact prerelease from PyPI with:
+The published fourth alpha is `0.1.0a4`. Install that exact prerelease from
+PyPI with:
 
 ```console
 python -m pip install --pre importtime-check==0.1.0a4
@@ -127,16 +127,16 @@ Its JSON format reports ordered warmups, samples, and upper medians for each
 target, plus safe interpreter identity. It contains no approved baseline
 allowances or regression verdict. Capture it as reviewable evidence; do not
 interpret one run as a stable cross-machine performance comparison.
-The multi-target API and JSON command are new in `0.1.0a4`. Before it is
-published, use a wheel built from this checkout rather than PyPI's older
-release. The
+The multi-target API and JSON command are available in `0.1.0a4`. The
 [measurement artifact guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/measurement-artifacts.md)
-shows a manual, pinned consuming-project workflow that uploads observations
-without changing a baseline.
+shows a manual, pinned consuming-project workflow that uploads several
+complete observations without changing a baseline. Offline cohort summary
+and before/after comparison are in the development source for planned
+`0.2.0a1`; they are **not** in the published `0.1.0a4` wheel and do not
+return a regression verdict.
 
-Version `0.1.0a3` also supports distinct, reviewed allowances for each
-recorded module. After installing the exact release above (or installing this
-checkout with `python -m pip install --editable .` before publication), a
+Version `0.1.0a3` also introduced distinct, reviewed allowances for each
+recorded module. After installing the exact release above, a
 two-module candidate can be made without hand-editing JSON:
 
 ```console
