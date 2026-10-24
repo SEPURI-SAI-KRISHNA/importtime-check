@@ -12,12 +12,17 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-The published fourth alpha is `0.1.0a4`. Install that exact prerelease from
-PyPI with:
+This source tree is prepared for `0.2.0a1`. After publication, install that
+exact prerelease from PyPI with:
 
 ```console
-python -m pip install --pre importtime-check==0.1.0a4
+python -m pip install --pre importtime-check==0.2.0a1
 ```
+
+The previous published alpha, `0.1.0a4`, remains available until then; it
+can collect v1 measurement reports but does not include offline cohort
+analysis. Before publication, use a clean wheel built from the reviewed
+source to try the `0.2.0a1` features.
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
 or newer; newer interpreter versions are not yet in the tested support matrix.
@@ -127,16 +132,24 @@ Its JSON format reports ordered warmups, samples, and upper medians for each
 target, plus safe interpreter identity. It contains no approved baseline
 allowances or regression verdict. Capture it as reviewable evidence; do not
 interpret one run as a stable cross-machine performance comparison.
-The multi-target API and JSON command are available in `0.1.0a4`. The
+The multi-target API and JSON command have been available since `0.1.0a4`. The
 [measurement artifact guide](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/guides/measurement-artifacts.md)
 shows a manual, pinned consuming-project workflow that uploads several
-complete observations without changing a baseline. Offline cohort summary
-and before/after comparison are in the development source for planned
-`0.2.0a1`; they are **not** in the published `0.1.0a4` wheel and do not
-return a regression verdict.
+complete observations without changing a baseline. `0.2.0a1` adds strict
+loading of those v1 reports and offline cohort summary and comparison:
+
+```console
+importtime-check report summarize --file run-1.json --file run-2.json --runner-context ubuntu24-py311 --install-context build-before
+importtime-check report compare --before-file before-1.json --before-file before-2.json --after-file after-1.json --after-file after-2.json --runner-context ubuntu24-py311 --before-install-context build-before --after-install-context build-after
+```
+
+The files and context labels are supplied by the reviewer; these commands
+do not collect imports, select budgets, or return a regression verdict.
+Matching report identity omits dependencies, Python patch version, hardware,
+and host load. The published `0.1.0a4` wheel does not include these commands.
 
 Version `0.1.0a3` also introduced distinct, reviewed allowances for each
-recorded module. After installing the exact release above, a
+recorded module. After installing the selected tool version, a
 two-module candidate can be made without hand-editing JSON:
 
 ```console
@@ -191,7 +204,7 @@ not prove that dependencies, hardware, or host load are comparable.
 
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
-publication, install `"importtime-check[pytest]==0.1.0a4"` instead of the
+publication, install `"importtime-check[pytest]==0.2.0a1"` instead of the
 editable checkout:
 
 ```console
@@ -245,7 +258,7 @@ See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blo
 for the complete contribution workflow and
 [SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
 for private vulnerability reporting.
-The [0.1.0a4 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.1.0a4.md) summarize changes,
+The [0.2.0a1 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.2.0a1.md) summarize changes,
 compatibility, and migration from earlier alphas.
 
 ## Current limits

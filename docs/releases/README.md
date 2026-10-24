@@ -2,16 +2,17 @@
 
 Use this runbook for each deliberately approved release. `VERSION` means the
 literal value in `src/importtime_check/_version.py`; `TAG` means `vVERSION`.
-For example, version `0.1.0a4` uses tag `v0.1.0a4`, milestone `0.1.0a4`,
-release issue title `release: 0.1.0a4`, and reviewed notes in
-`docs/releases/v0.1.0a4.md`. The release-preparation changes use a separate
+For example, version `0.2.0a1` uses tag `v0.2.0a1`, milestone `0.2.0a1`,
+release issue title `release: 0.2.0a1`, and reviewed notes in
+`docs/releases/v0.2.0a1.md`. The release-preparation changes use a separate
 issue and PR, so merging them does not close the release issue prematurely.
 
 ## Before creating the tag
 
 1. Merge the release-preparation PR only after aggregate CI passes. Review its
-   CodeQL, dependency-review, DCO, supported-Python test matrix, build, Twine,
-   artifact, and clean-wheel results. Confirm the source version, package
+   CodeQL, dependency-review, DCO, supported-Python test matrix, the selected
+   Windows/macOS installed-wheel lanes, build, Twine, artifact, archived-v1
+   fixture tests, and clean-wheel results. Confirm the source version, package
    metadata, documentation, and `docs/releases/TAG.md` agree.
 2. Confirm exactly one **open** milestone is titled `VERSION`, with exactly
    one **open** issue titled `release: VERSION` in it. Every other issue in
@@ -66,13 +67,18 @@ documentation and default-branch CI remain healthy. Remove the one-time
 `PYPI_RELEASE_APPROVED` variable after successful publication. Only then
 close the release issue and milestone.
 
-For `0.1.0a4`, collect a two-module text measurement and a two-module JSON
-measurement; inspect the report type, version, target order, sample arrays,
-upper medians, and safe environment identity. Exercise the batch Python API
-and the pinned observation-only CI example. Confirm the old one-module text
-output, existing schema-1 baseline files, `check`, and the optional pytest
-integration still work without migration. A measurement report is not an
-approved baseline; do not refresh one just to prove compatibility.
+For `0.2.0a1`, collect several complete two-module JSON reports on the same
+controlled runner. Load archived version-1 reports, summarize each cohort,
+and compare before/after cohorts through both the Python API and installed
+CLI. Confirm deterministic source digests, observed medians and spreads,
+the separate `analysis_type`/`analysis_version` JSON shapes, and safe exit-2
+diagnostics for invalid or unsupported input. A summary or comparison is
+observation-only: it must not emit a regression verdict, change an approved
+baseline, or silently normalize different runner conditions. Confirm the
+previous one-module text output, version-1 measurement JSON, schema-1
+baseline files, `check`, and optional pytest integration still work without
+migration. Exercise the pinned manual example only after the new PyPI pin
+resolves.
 
 If PyPI or GitHub disagrees with the reviewed artifacts, stop. Published PyPI
 files cannot be replaced in place. Document the defect, yank only if justified,

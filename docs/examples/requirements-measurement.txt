@@ -1,4 +1,4 @@
-# Consuming-project example using the published 0.1.0a4 collector.
+# Consuming-project example for 0.2.0a1; install after publication.
 # Replace packaging with a complete, reviewed lock of your installed targets.
-importtime-check==0.1.0a4
+importtime-check==0.2.0a1
 packaging==26.3
