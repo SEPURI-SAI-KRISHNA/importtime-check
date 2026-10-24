@@ -227,6 +227,48 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  wheel-smoke:
+    name: Wheel smoke (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.14"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install packaging tools
+        run: |
+          python -m pip install --upgrade "pip>=25.1"
+          python -m pip install --group packaging
+
+      - name: Build wheel and source distribution
+        run: python -m build --outdir .tmp/dist
+
+      - name: Check package metadata
+        run: python -m twine check .tmp/dist/*
+
+      - name: Validate artifact contents
+        run: python -m tools.validate_artifacts .tmp/dist
+
+      - name: Exercise installed wheel outside source tree
+        run: python -m tools.smoke_wheel .tmp/dist
+
   required:
     name: CI
     if: always()
@@ -238,12 +280,14 @@ jobs:
       - dependency-review
       - codeql
       - package
+      - wheel-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every CI job to pass
         env:
           PACKAGE_RESULT: ${{ needs.package.result }}
+          WHEEL_SMOKE_RESULT: ${{ needs['wheel-smoke'].result }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
           PYTEST_INTEGRATION_RESULT: ${{ needs['pytest-integration'].result }}
@@ -257,6 +301,7 @@ jobs:
           test "$PYTEST_INTEGRATION_RESULT" = success
           test "$CODEQL_RESULT" = success
           test "$PACKAGE_RESULT" = success
+          test "$WHEEL_SMOKE_RESULT" = success
           if [ "$EVENT_NAME" = pull_request ]; then
             test "$DCO_RESULT" = success
             test "$DEPENDENCY_REVIEW_RESULT" = success
