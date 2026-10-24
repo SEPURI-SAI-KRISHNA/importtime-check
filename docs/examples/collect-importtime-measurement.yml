@@ -29,30 +29,35 @@ jobs:
       - name: Collect and inspect complete observations
         run: |
           mkdir -p .tmp
-          importtime-check measure \
-            --module packaging --module packaging.version \
-            --warmups 1 --samples 7 --format json \
-            > .tmp/importtime-measurement.json
+          for run in 1 2 3; do
+            importtime-check measure \
+              --module packaging --module packaging.version \
+              --warmups 1 --samples 7 --format json \
+              > ".tmp/importtime-measurement-${run}.json"
+          done
           python - <<'PY'
           import json
           from pathlib import Path
 
-          document = json.loads(Path('.tmp/importtime-measurement.json').read_text())
-          assert document['report_type'] == 'measurement'
-          assert document['report_version'] == 1
-          assert document['sampling'] == {
-              'samples': 7, 'statistic': 'upper_median', 'warmups': 1
-          }
-          assert set(document['targets']) == {'packaging', 'packaging.version'}
-          for target in document['targets'].values():
-              assert len(target['warmups_us']) == 1
-              assert len(target['samples_us']) == 7
-              assert target['upper_median_us'] in target['samples_us']
+          paths = sorted(Path('.tmp').glob('importtime-measurement-*.json'))
+          assert len(paths) == 3
+          for path in paths:
+              document = json.loads(path.read_text(encoding='utf-8'))
+              assert document['report_type'] == 'measurement'
+              assert document['report_version'] == 1
+              assert document['sampling'] == {
+                  'samples': 7, 'statistic': 'upper_median', 'warmups': 1
+              }
+              assert set(document['targets']) == {'packaging', 'packaging.version'}
+              for target in document['targets'].values():
+                  assert len(target['warmups_us']) == 1
+                  assert len(target['samples_us']) == 7
+                  assert target['upper_median_us'] in target['samples_us']
           PY
 
       - name: Upload observations for human review
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: importtime-measurement
-          path: .tmp/importtime-measurement.json
+          path: .tmp/importtime-measurement-*.json
           if-no-files-found: error

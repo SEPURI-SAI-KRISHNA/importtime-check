@@ -20,8 +20,7 @@ runner has equivalent hardware or load. For a dependable, tighter performance
 gate, use a controlled runner class or image and investigate ordinary variance
 before choosing allowances. A matching five-field identity cannot detect
 dependency changes, Python patch changes, CPU contention, or host differences.
-The `0.1.0a4` pin becomes installable from PyPI only after publication. Before
-then, validate these commands against a wheel built from the reviewed source.
+The published `0.1.0a4` prerelease can be installed with that exact pin.
 
 ## Bootstrap the policy
 
@@ -84,8 +83,7 @@ importtime-check check --baseline importtime-common-local.json --module json --p
 ## Record and review a two-module policy
 
 Version `0.1.0a3` accepts one repeatable `--budget MODULE=US,PERCENT` entry per
-explicit `--module`. Install the exact release above after publication, or use
-a wheel built from this reviewed checkout beforehand. `email` and `json` are
+explicit `--module`. Install the exact release above. `email` and `json` are
 standard-library stand-ins for two modules installed in the interpreter used
 by your actual project. Run these commands on one machine; do not commit this
 local baseline as a CI policy:
