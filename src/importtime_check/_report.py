@@ -21,7 +21,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from ._baseline import BaselineError, EnvironmentIdentity, SamplingPolicy
-from ._cohort import CohortSummary
+from ._cohort import CohortComparison, CohortSummary
 from ._measurement import ImportMeasurementError
 from ._regression import RegressionReport
 from ._sampling import ImportSampleSet
@@ -148,6 +148,61 @@ def cohort_summary_text(summary: CohortSummary) -> str:
             f"{module}: observed median {target.observed_median_us} us; "
             f"range {target.min_us}..{target.max_us} us; "
             f"spread {target.spread_us} us"
+        )
+    lines.append("Descriptive only; no regression verdict.")
+    return "\n".join(lines) + "\n"
+
+
+def cohort_comparison_json(comparison: CohortComparison) -> str:
+    """Render complete cohorts and exact descriptive changes as analysis v1."""
+    return _json(
+        {
+            "analysis_type": "cohort_comparison",
+            "analysis_version": 1,
+            "before": _cohort_summary_document(comparison.before),
+            "after": _cohort_summary_document(comparison.after),
+            "changes": {
+                module: {
+                    "before_us": change.before_us,
+                    "after_us": change.after_us,
+                    "change_us": change.change_us,
+                    "change_percent": change.change_percent,
+                }
+                for module, change in comparison.changes.items()
+            },
+        }
+    )
+
+
+def cohort_comparison_text(comparison: CohortComparison) -> str:
+    """Show signed changes beside both observed ranges and spreads."""
+    before = comparison.before
+    after = comparison.after
+    identity = before.environment
+    sampling = before.sampling
+    lines = [
+        f"Comparison: before {before.report_count} reports (install "
+        f"{before.install_context}); after {after.report_count} reports "
+        f"(install {after.install_context}); runner {before.runner_context}",
+        f"Environment: {identity.implementation} {identity.python}, "
+        f"{identity.platform}/{identity.machine}",
+        f"Sampling: {sampling.warmups} warmup(s), "
+        f"{sampling.samples} recorded sample(s), {sampling.statistic}",
+    ]
+    for module, change in comparison.changes.items():
+        prior = before.targets[module]
+        current = after.targets[module]
+        signed = f"{change.change_us:+d}" if change.change_us else "0"
+        percent = (
+            f"{change.change_percent}%" if change.change_percent is not None else "n/a"
+        )
+        lines.append(
+            f"{module}: {change.before_us} -> {change.after_us} us "
+            f"({signed} us, {percent}); "
+            f"before range {prior.min_us}..{prior.max_us} us "
+            f"(spread {prior.spread_us} us); "
+            f"after range {current.min_us}..{current.max_us} us "
+            f"(spread {current.spread_us} us)"
         )
     lines.append("Descriptive only; no regression verdict.")
     return "\n".join(lines) + "\n"

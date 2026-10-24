@@ -269,6 +269,51 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 raise ValueError("unexpected cohort summary")
         except (AttributeError, KeyError, TypeError, ValueError) as error:
             raise WheelSmokeError("invalid cohort summary JSON") from error
+        after_files: list[Path] = []
+        for shift in (2, 3):
+            after_document = json.loads(measured.stdout)
+            after_target = after_document["targets"]["email"]
+            after_target["samples_us"][0] += shift
+            after_target["upper_median_us"] += shift
+            after_file = temporary_path / f"measurement-after-{shift}.json"
+            after_file.write_text(json.dumps(after_document), encoding="utf-8")
+            after_files.append(after_file)
+        compared = _run(
+            (
+                *command,
+                "report",
+                "compare",
+                "--before-file",
+                str(report_file),
+                "--before-file",
+                str(second_report),
+                "--after-file",
+                str(after_files[0]),
+                "--after-file",
+                str(after_files[1]),
+                "--runner-context",
+                "wheel-smoke",
+                "--before-install-context",
+                "wheel-under-test",
+                "--after-install-context",
+                "wheel-after",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+        )
+        try:
+            comparison = json.loads(compared.stdout)
+            if (
+                comparison.get("analysis_type") != "cohort_comparison"
+                or comparison.get("analysis_version") != 1
+                or comparison["before"]["report_count"] != 2
+                or comparison["after"]["report_count"] != 2
+                or comparison["changes"]["email"]["change_us"] != 2
+            ):
+                raise ValueError("unexpected cohort comparison")
+        except (AttributeError, KeyError, TypeError, ValueError) as error:
+            raise WheelSmokeError("invalid cohort comparison JSON") from error
         baseline = temporary_path / "baseline.json"
         _run(
             (

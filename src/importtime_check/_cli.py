@@ -36,7 +36,7 @@ from ._baseline import (
     load_baseline,
     save_baseline,
 )
-from ._cohort import summarize_measurement_reports
+from ._cohort import compare_report_cohorts, summarize_measurement_reports
 from ._measurement import (
     ImportMeasurementError,
     _interpreter_path,
@@ -57,6 +57,8 @@ from ._regression import (
     refresh_baseline,
 )
 from ._report import (
+    cohort_comparison_json,
+    cohort_comparison_text,
     cohort_summary_json,
     cohort_summary_text,
     error_json,
@@ -104,6 +106,15 @@ def _parser() -> argparse.ArgumentParser:
     summarize.add_argument("--runner-context", required=True)
     summarize.add_argument("--install-context", required=True)
     summarize.add_argument("--format", choices=("text", "json"), default="text")
+    compare = report_commands.add_parser(
+        "compare", help="compare two controlled report cohorts"
+    )
+    compare.add_argument("--before-file", action="append", required=True)
+    compare.add_argument("--after-file", action="append", required=True)
+    compare.add_argument("--runner-context", required=True)
+    compare.add_argument("--before-install-context", required=True)
+    compare.add_argument("--after-install-context", required=True)
+    compare.add_argument("--format", choices=("text", "json"), default="text")
 
     baseline = commands.add_parser(
         "baseline", help="record, refresh, or inspect a baseline"
@@ -415,21 +426,25 @@ def _check(arguments: argparse.Namespace) -> int:
     return 1 if result.status == "regression" else 0
 
 
-def _summarize(arguments: argparse.Namespace) -> int:
-    if not 2 <= len(arguments.file) <= 64:
+def _load_reports(paths: Sequence[str]) -> tuple[MeasurementReport, ...]:
+    if not 2 <= len(paths) <= 64:
         raise MeasurementReportError(
             "cohort-invalid", "cohort must contain 2 to 64 reports"
         )
     reports: list[MeasurementReport] = []
-    for index, path in enumerate(arguments.file, start=1):
+    for index, path in enumerate(paths, start=1):
         try:
             reports.append(load_measurement_report(path))
         except MeasurementReportError as error:
             raise MeasurementReportError(
                 error.kind, error.reason, source_index=index
             ) from error
+    return tuple(reports)
+
+
+def _summarize(arguments: argparse.Namespace) -> int:
     summary = summarize_measurement_reports(
-        reports,
+        _load_reports(arguments.file),
         runner_context=arguments.runner_context,
         install_context=arguments.install_context,
     )
@@ -437,6 +452,54 @@ def _summarize(arguments: argparse.Namespace) -> int:
         cohort_summary_json(summary)
         if arguments.format == "json"
         else cohort_summary_text(summary)
+    )
+    return 0
+
+
+def _print_report_error(
+    error: MeasurementReportError, *, side: str | None = None
+) -> None:
+    location = (
+        f" at {side} report #{error.source_index}"
+        if side is not None and error.source_index is not None
+        else f" at report #{error.source_index}"
+        if error.source_index is not None
+        else f" in {side} cohort"
+        if side is not None
+        else ""
+    )
+    fields = f" ({', '.join(error.differing_fields)})" if error.differing_fields else ""
+    print(f"importtime-check: {error.kind}{location}{fields}", file=sys.stderr)
+
+
+def _compare(arguments: argparse.Namespace) -> int:
+    try:
+        before = summarize_measurement_reports(
+            _load_reports(arguments.before_file),
+            runner_context=arguments.runner_context,
+            install_context=arguments.before_install_context,
+        )
+    except MeasurementReportError as error:
+        if arguments.debug:
+            raise
+        _print_report_error(error, side="before")
+        return 2
+    try:
+        after = summarize_measurement_reports(
+            _load_reports(arguments.after_file),
+            runner_context=arguments.runner_context,
+            install_context=arguments.after_install_context,
+        )
+    except MeasurementReportError as error:
+        if arguments.debug:
+            raise
+        _print_report_error(error, side="after")
+        return 2
+    comparison = compare_report_cohorts(before, after)
+    sys.stdout.write(
+        cohort_comparison_json(comparison)
+        if arguments.format == "json"
+        else cohort_comparison_text(comparison)
     )
     return 0
 
@@ -449,7 +512,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command == "measure":
             return _measure(arguments)
         if arguments.command == "report":
-            return _summarize(arguments)
+            return (
+                _summarize(arguments)
+                if arguments.report_command == "summarize"
+                else _compare(arguments)
+            )
         if arguments.command == "baseline":
             if arguments.baseline_command == "record":
                 return _record(arguments)
@@ -460,15 +527,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except MeasurementReportError as error:
         if arguments.debug:
             raise
-        location = (
-            f" at report #{error.source_index}"
-            if error.source_index is not None
-            else ""
-        )
-        fields = (
-            f" ({', '.join(error.differing_fields)})" if error.differing_fields else ""
-        )
-        print(f"importtime-check: {error.kind}{location}{fields}", file=sys.stderr)
+        _print_report_error(error)
         return 2
     except (BaselineError, ImportMeasurementError) as error:
         if arguments.debug:
