@@ -31,6 +31,7 @@ example `0001-packaging-and-compatibility.md`. Each record documents:
 9. [0009: Per-target baseline budgets](0009-per-target-baseline-budgets.md)
 10. [0010: Multi-target measurement reports](0010-multi-target-measurement-reports.md)
 11. [0011: Offline measurement report cohorts](0011-offline-report-cohorts.md)
+12. [0012: Report-to-baseline proposals remain unapproved policy](0012-report-to-baseline-proposals.md)
 
 ## Lifecycle
 
