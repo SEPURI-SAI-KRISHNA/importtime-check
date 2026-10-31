@@ -148,6 +148,14 @@ do not collect imports, select budgets, or return a regression verdict.
 Matching report identity omits dependencies, Python patch version, hardware,
 and host load. The published `0.1.0a4` wheel does not include these commands.
 
+The upcoming `0.2.0a2` Python API can turn a validated cohort summary into an
+unapproved schema-1 candidate. Call `propose_baseline` with an explicit
+`profile` and one `TargetAllowance` for every target. The result is an
+immutable `Baseline` value; the API never saves it, chooses budgets, or
+approves it. Review the report provenance, runner and dependency context,
+and each allowance before deliberately saving or using the candidate.
+CLI proposal output and a full review walkthrough are tracked separately.
+
 Version `0.1.0a3` also introduced distinct, reviewed allowances for each
 recorded module. After installing the selected tool version, a
 two-module candidate can be made without hand-editing JSON:
