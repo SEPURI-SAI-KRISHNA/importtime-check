@@ -41,6 +41,7 @@ assert metadata.requires("importtime-check") == ["pytest>=9.1.1; extra == 'pytes
 assert util.find_spec("pytest") is None
 assert "pytest" not in sys.modules
 assert callable(importtime_check.refresh_baseline)
+assert callable(importtime_check.propose_baseline)
 assert callable(importtime_check.decode_measurement_report)
 assert callable(importtime_check.load_measurement_report)
 assert any(
@@ -55,9 +56,11 @@ import json
 from pathlib import Path
 import sys
 from importtime_check import (
+    TargetAllowance,
     compare_report_cohorts,
     decode_measurement_report,
     load_measurement_report,
+    propose_baseline,
     summarize_measurement_reports,
 )
 
@@ -79,6 +82,16 @@ assert summary.report_count == 2
 assert tuple(summary.targets) == ("email", "json")
 assert summary.targets["email"].spread_us == 1
 assert summary.sources_sha256 == tuple(sorted((loaded.source_sha256, second.source_sha256)))
+candidate = propose_baseline(
+    summary,
+    profile="wheel-review",
+    per_target_allowances={
+        module: TargetAllowance(0, "0") for module in summary.targets
+    },
+)
+assert tuple(candidate.targets) == ("email", "json")
+assert candidate.targets["email"].baseline_cumulative_us == summary.targets["email"].observed_median_us
+assert candidate.environment.profile == "wheel-review"
 after_reports = []
 for shift in (2, 3):
     document = json.loads(path.read_bytes())
