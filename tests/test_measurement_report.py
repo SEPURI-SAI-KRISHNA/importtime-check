@@ -406,6 +406,7 @@ def test_file_changed_during_open_is_rejected(
         found = original_fstat(fd)
         return SimpleNamespace(
             st_mode=stat.S_IFDIR if changed_mode else found.st_mode,
+            st_size=found.st_size,
             st_dev=found.st_dev,
             st_ino=found.st_ino + 1,
         )
