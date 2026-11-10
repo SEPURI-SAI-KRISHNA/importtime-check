@@ -1,0 +1,4 @@
+# Consuming-project example for 0.2.0a2; install after publication.
+# Replace packaging with a complete, reviewed lock of your installed targets.
+importtime-check==0.2.0a2
+packaging==26.3

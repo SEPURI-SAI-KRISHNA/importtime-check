@@ -1,0 +1,57 @@
+name: Import-time baseline proposal
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up CPython 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install locked import environment
+        run: |
+          python -m pip install --requirement ci/requirements-candidate.txt
+          python -m pip check
+
+      - name: Collect comparable reports and propose unapproved policy
+        run: |
+          mkdir -p .tmp
+          for run in 1 2 3; do
+            importtime-check measure \
+              --module packaging --module packaging.version \
+              --warmups 1 --samples 7 --format json \
+              > ".tmp/importtime-measurement-${run}.json"
+          done
+          importtime-check baseline propose \
+            --file .tmp/importtime-measurement-1.json \
+            --file .tmp/importtime-measurement-2.json \
+            --file .tmp/importtime-measurement-3.json \
+            --runner-context gh-ubuntu-24.04 \
+            --install-context packaging-26.3 \
+            --profile gh-ubuntu-24.04 \
+            --budget packaging=1000,25 \
+            --budget packaging.version=2000,30 \
+            --output .tmp/importtime-baseline-candidate.json \
+            --explain > .tmp/importtime-baseline-review.txt
+
+      - name: Upload candidate and explanation for human review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: importtime-baseline-proposal
+          path: |
+            .tmp/importtime-baseline-candidate.json
+            .tmp/importtime-baseline-review.txt
+          if-no-files-found: error
