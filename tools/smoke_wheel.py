@@ -286,6 +286,49 @@ def smoke_wheel(dist_dir: Path) -> Path:
         second_target["samples_us"][0] += 1
         second_target["upper_median_us"] += 1
         second_report.write_text(json.dumps(second_document), encoding="utf-8")
+        candidate = temporary_path / "candidate-baseline.json"
+        proposal_command = (
+            *command,
+            "baseline",
+            "propose",
+            "--file",
+            str(report_file),
+            "--file",
+            str(second_report),
+            "--runner-context",
+            "wheel-smoke",
+            "--install-context",
+            "wheel-under-test",
+            "--profile",
+            "wheel-review",
+            "--budget",
+            "email=5,2.5",
+            "--budget",
+            "json=0,0",
+            "--output",
+            str(candidate),
+        )
+        proposed = _run(proposal_command, cwd=temporary_path)
+        if "unapproved candidate" not in proposed.stdout:
+            raise WheelSmokeError("installed proposal did not require review")
+        try:
+            candidate_document = json.loads(candidate.read_bytes())
+            if (
+                candidate_document["environment"]["profile"] != "wheel-review"
+                or tuple(candidate_document["targets"]) != ("email", "json")
+                or candidate_document["targets"]["email"]["max_increase_us"] != 5
+            ):
+                raise ValueError("unexpected candidate baseline")
+        except (KeyError, TypeError, ValueError) as error:
+            raise WheelSmokeError("invalid installed candidate baseline") from error
+        original_candidate = candidate.read_bytes()
+        _expect_report_error(
+            proposal_command,
+            cwd=temporary_path,
+            expected="importtime-check: io-error; candidate was not created",
+        )
+        if candidate.read_bytes() != original_candidate:
+            raise WheelSmokeError("installed proposal replaced an existing candidate")
         summarized = _run(
             (
                 *command,
@@ -366,6 +409,19 @@ def smoke_wheel(dist_dir: Path) -> Path:
             '{"report_type":"measurement","report_version":1,"report_version":1}',
             encoding="utf-8",
         )
+        rejected_candidate = temporary_path / "rejected-candidate.json"
+        malformed_proposal = list(proposal_command)
+        malformed_proposal[malformed_proposal.index(str(second_report))] = str(
+            malformed
+        )
+        malformed_proposal[-1] = str(rejected_candidate)
+        _expect_report_error(
+            malformed_proposal,
+            cwd=temporary_path,
+            expected="importtime-check: report-invalid at report #2",
+        )
+        if rejected_candidate.exists():
+            raise WheelSmokeError("installed proposal wrote after a bad report")
         _expect_report_error(
             (
                 *command,
