@@ -12,19 +12,17 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-The latest published alpha is `0.2.0a1`. Install that exact prerelease from
-PyPI with:
+This source tree is prepared for `0.2.0a2`. After publication, install that
+exact prerelease from PyPI with:
 
 ```console
-python -m pip install --pre importtime-check==0.2.0a1
+python -m pip install --pre importtime-check==0.2.0a2
 ```
 
-The previous `0.1.0a4` alpha can collect v1 measurement reports but does not
-include offline cohort analysis. The source under development adds the
-`0.2.0a2` proposal path; use a clean wheel built from reviewed source to try
-it before publication. The source version is bumped only during release
-preparation, so a development wheel may still say `0.2.0a1` while containing
-unreleased code; do not publish or mistake it for the PyPI `0.2.0a1` files.
+Until `0.2.0a2` is published, the published `0.2.0a1` alpha can load and
+analyze v1 reports but cannot propose a baseline from them. Use a clean wheel
+built from this reviewed source to verify the new proposal path. Do not
+publish a development build; use the protected release workflow.
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
 or newer; newer interpreter versions are not yet in the tested support matrix.
@@ -150,7 +148,7 @@ do not collect imports, select budgets, or return a regression verdict.
 Matching report identity omits dependencies, Python patch version, hardware,
 and host load. The published `0.1.0a4` wheel does not include these commands.
 
-The upcoming `0.2.0a2` Python API can turn a validated cohort summary into an
+The `0.2.0a2` Python API can turn a validated cohort summary into an
 unapproved schema-1 candidate. Call `propose_baseline` with an explicit
 `profile` and one `TargetAllowance` for every target. The result is an
 immutable `Baseline` value; the API never saves it, chooses budgets, or
@@ -227,7 +225,7 @@ not prove that dependencies, hardware, or host load are comparable.
 
 Pytest integration is optional and must be explicitly loaded. For a development
 checkout, install its extra and run against an approved baseline. After
-publication, install `"importtime-check[pytest]==0.2.0a1"` instead of the
+publication, install `"importtime-check[pytest]==0.2.0a2"` instead of the
 editable checkout:
 
 ```console
@@ -281,7 +279,7 @@ See [CONTRIBUTING.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blo
 for the complete contribution workflow and
 [SECURITY.md](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/SECURITY.md)
 for private vulnerability reporting.
-The [0.2.0a1 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.2.0a1.md) summarize changes,
+The [0.2.0a2 release notes](https://github.com/SEPURI-SAI-KRISHNA/importtime-check/blob/main/docs/releases/v0.2.0a2.md) summarize changes,
 compatibility, and migration from earlier alphas.
 
 ## Current limits

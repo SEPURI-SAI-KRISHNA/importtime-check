@@ -80,6 +80,20 @@ baseline files, `check`, and optional pytest integration still work without
 migration. Exercise the pinned manual example only after the new PyPI pin
 resolves.
 
+For `0.2.0a2`, verify that the reviewed source version, all consuming-example
+pins, metadata, source distribution, wheel, and release notes agree. Use
+archived v1 reports and a clean installed wheel to propose a two-target
+candidate with explicit distinct allowances. Confirm canonical schema 1,
+deterministic source/candidate digests, path-free explanation, optional
+old-policy field differences, and fail-closed behavior for an existing output
+or bad report. Verify the manual example cannot write the approved baseline,
+that the required PR check still reads only committed policy, and that
+existing report analysis, baseline/check, and explicit pytest behavior remain
+unchanged. The candidate workflow uploads only candidate/review artifacts;
+approve no policy without the exact source reports and a separate reviewed
+PR. Do not tag until the latest merged `main` CI is green, the feature parent
+and preparation issues are closed, and only the release issue remains open.
+
 If PyPI or GitHub disagrees with the reviewed artifacts, stop. Published PyPI
 files cannot be replaced in place. Document the defect, yank only if justified,
 open an issue, and prepare a new version; never delete or overwrite a file to
