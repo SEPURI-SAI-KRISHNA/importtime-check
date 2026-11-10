@@ -45,6 +45,7 @@ from ._measurement_report import (
 )
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
+from ._proposal import BaselineProposalError, propose_baseline
 from ._regression import (
     RegressionReport,
     TargetRegressionResult,
@@ -60,6 +61,7 @@ from ._version import __version__
 __all__ = (
     "Baseline",
     "BaselineError",
+    "BaselineProposalError",
     "CohortComparison",
     "CohortSummary",
     "EnvironmentIdentity",
@@ -92,6 +94,7 @@ __all__ = (
     "measure_import",
     "parse_importtime",
     "probe_environment",
+    "propose_baseline",
     "record_baseline",
     "refresh_baseline",
     "sample_import",
