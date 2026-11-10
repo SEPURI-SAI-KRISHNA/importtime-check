@@ -12,8 +12,9 @@ Copy its [exact requirements](../examples/requirements-candidate.txt) into the
 consuming project's `ci/` directory. Its `0.2.0a2` tool pin becomes installable
 after that release is published. The workflow never commits the candidate or
 changes the required check's `ci/importtime-baseline.json`; promote policy only
-through a separate reviewed PR. The full report-to-policy review walkthrough
-is tracked separately.
+through a separate reviewed PR. Follow the
+[report-to-policy review walkthrough](candidate-review.md) before promoting
+any candidate.
 
 This is a small, runnable example for a **consuming project**. It measures the
 `packaging` and `packaging.version` modules as stand-ins for two of your own

@@ -12,17 +12,19 @@ performance regresses.
 This project is in early alpha development; its public API is not yet a stable
 compatibility commitment.
 
-This source tree is prepared for `0.2.0a1`. After publication, install that
-exact prerelease from PyPI with:
+The latest published alpha is `0.2.0a1`. Install that exact prerelease from
+PyPI with:
 
 ```console
 python -m pip install --pre importtime-check==0.2.0a1
 ```
 
-The previous published alpha, `0.1.0a4`, remains available until then; it
-can collect v1 measurement reports but does not include offline cohort
-analysis. Before publication, use a clean wheel built from the reviewed
-source to try the `0.2.0a1` features.
+The previous `0.1.0a4` alpha can collect v1 measurement reports but does not
+include offline cohort analysis. The source under development adds the
+`0.2.0a2` proposal path; use a clean wheel built from reviewed source to try
+it before publication. The source version is bumped only during release
+preparation, so a development wheel may still say `0.2.0a1` while containing
+unreleased code; do not publish or mistake it for the PyPI `0.2.0a1` files.
 
 CPython 3.11 through 3.14 are tested. Package metadata requires Python 3.11
 or newer; newer interpreter versions are not yet in the tested support matrix.
@@ -167,7 +169,7 @@ baseline. The command never replaces an approved policy or chooses budgets.
 digests and review text outside the schema-1 candidate. An invalid old
 baseline prevents candidate creation. Python callers can use
 `explain_baseline_proposal` for the same path-free review text. The full review
-walkthrough is tracked separately.
+walkthrough is in the [candidate review guide](docs/guides/candidate-review.md).
 
 Version `0.1.0a3` also introduced distinct, reviewed allowances for each
 recorded module. After installing the selected tool version, a
