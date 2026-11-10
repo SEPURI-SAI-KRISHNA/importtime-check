@@ -142,11 +142,17 @@ def test_proposal_inputs_outputs_and_gate_pin_are_separate() -> None:
     candidate_requirements = (EXAMPLES / "requirements-candidate.txt").read_text(
         encoding="utf-8"
     )
+    measurement_requirements = (EXAMPLES / "requirements-measurement.txt").read_text(
+        encoding="utf-8"
+    )
     check_requirements = (EXAMPLES / "requirements-importtime.txt").read_text(
         encoding="utf-8"
     )
     assert "importtime-check==0.2.0a2" in candidate_requirements.splitlines()
+    assert "importtime-check==0.2.0a2" in measurement_requirements.splitlines()
+    assert "importtime-check==0.2.0a2" in check_requirements.splitlines()
     assert "packaging==26.3" in candidate_requirements.splitlines()
+    assert "packaging==26.3" in measurement_requirements.splitlines()
     assert "packaging==26.3" in check_requirements.splitlines()
 
     gate = _workflow("check-importtime.yml")

@@ -25,16 +25,16 @@ installed modules. The example files are
 project as described below; do not add these example workflows to this
 repository's `.github/workflows/` directory.
 
-The release example pins `importtime-check==0.2.0a1`, `packaging==26.3`,
+The release example pins `importtime-check==0.2.0a2`, `packaging==26.3`,
 CPython 3.11, the `ubuntu-24.04` runner label, and the action commits. It needs no PyPI
 credentials. It is a starting policy, **not** evidence that every GitHub-hosted
 runner has equivalent hardware or load. For a dependable, tighter performance
 gate, use a controlled runner class or image and investigate ordinary variance
 before choosing allowances. A matching five-field identity cannot detect
 dependency changes, Python patch changes, CPU contention, or host differences.
-The `0.2.0a1` pin resolves only after publication. Until then, test against
-a clean wheel built from the reviewed source; the previously published
-`0.1.0a4` wheel remains available for the older baseline functionality.
+The `0.2.0a2` pin resolves only after publication. Until then, test against
+a clean wheel built from the reviewed source; the published `0.2.0a1` wheel
+remains available for the older baseline and report-analysis functionality.
 
 ## Bootstrap the policy
 
@@ -83,12 +83,12 @@ regression is reported only when the increase exceeds **both** allowances.
 Tune them through measured variance and a reviewed PR, not a failing CI run's
 single timing.
 
-To check that the old common-allowance flags still work with `0.2.0a1`, a
+To check that the old common-allowance flags still work with `0.2.0a2`, a
 disposable standard-library target is enough; **do not commit this local
 baseline for a different CI runner**:
 
 ```console
-python -m pip install --pre importtime-check==0.2.0a1
+python -m pip install --pre importtime-check==0.2.0a2
 importtime-check baseline record --output importtime-common-local.json --module json --warmups 0 --samples 1 --max-increase-us 1000000 --max-increase-percent 100 --profile local-smoke
 importtime-check baseline show --file importtime-common-local.json
 importtime-check check --baseline importtime-common-local.json --module json --profile local-smoke
@@ -129,7 +129,7 @@ Budget mode requires exactly one entry for each selected module and cannot be
 mixed with the old common-allowance flags; incomplete or ambiguous input is
 rejected before target imports or baseline writing.
 
-The included consuming-project workflows pin `0.2.0a1`: the manual candidate
+The included consuming-project workflows pin `0.2.0a2`: the manual candidate
 passes both `--module` selections and their two `--budget` entries; the PR
 gate passes the same explicit module list but no budgets. Keep the same
 installed dependency set, Python minor version, runner class,

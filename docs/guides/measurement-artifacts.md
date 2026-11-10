@@ -9,11 +9,12 @@ performance regressed.
 
 The [manual workflow](../examples/collect-importtime-measurement.yml) and
 [exact requirements](../examples/requirements-measurement.txt) target
-`importtime-check==0.2.0a1`, `packaging==26.3`, CPython 3.11, and the
+`importtime-check==0.2.0a2`, `packaging==26.3`, CPython 3.11, and the
 `ubuntu-24.04` runner label. The tool pin becomes installable after
-`0.2.0a1` is published. Before then, use a clean wheel built from the
-reviewed source to try these commands. The published `0.1.0a4` wheel can
-collect the same v1 reports, but lacks `report summarize` and `report compare`.
+`0.2.0a2` is published. Before then, use a clean wheel built from the
+reviewed source to try the new proposal route. The published `0.2.0a1` wheel
+already collects and analyzes the same v1 reports, but lacks `baseline
+propose`.
 
 ## Try the report locally
 
@@ -95,10 +96,9 @@ the cohorts as comparable. Do not select a threshold from one favorable run.
 
 ## Summarize a controlled cohort
 
-The `report summarize` command is in `0.2.0a1`. Until publication, use a
-clean wheel built from the reviewed source. Keep each downloaded three-file
-set complete and use a separate environment with that version for offline
-analysis. Version-1 files collected by `0.1.0a4` are also valid inputs.
+The `report summarize` command has been available since `0.2.0a1`. Keep each
+downloaded three-file set complete and use a pinned tool environment for
+offline analysis. Version-1 files collected by `0.1.0a4` are also valid inputs.
 For the first artifact, run:
 
 ```console
@@ -168,8 +168,8 @@ median is zero, and may round to `0.00` for a nonzero microsecond shift; read
 the signed `change_us` too. This API has no verdict and does not write a
 baseline.
 
-The corresponding CLI compares the same six files without
-writing an analysis file or changing baseline policy:
+The corresponding CLI, available since `0.2.0a1`, compares the same six files
+without writing an analysis file or changing baseline policy:
 
 ```console
 importtime-check report compare --before-file before/importtime-measurement-1.json --before-file before/importtime-measurement-2.json --before-file before/importtime-measurement-3.json --after-file after/importtime-measurement-1.json --after-file after/importtime-measurement-2.json --after-file after/importtime-measurement-3.json --runner-context ubuntu24-py311 --before-install-context build-before --after-install-context build-after

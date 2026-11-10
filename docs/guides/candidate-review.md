@@ -14,10 +14,9 @@ those pins with a complete reviewed lock, interpreter, and runner for your
 actual project. The example allowances are syntax illustrations, **not**
 recommended thresholds for GitHub-hosted runners.
 
-Until release preparation changes the source version, a locally built wheel
-may still report `0.2.0a1` despite containing unreleased proposal code. Use it
-only for local review or CI verification; do not publish it or confuse it
-with the `0.2.0a1` files already on PyPI.
+The release-preparation source now declares `0.2.0a2`; the exact PyPI pin
+cannot resolve until publication. A local build is for review and verification,
+not a substitute for a published release.
 
 ## 1. Retain complete observations
 
