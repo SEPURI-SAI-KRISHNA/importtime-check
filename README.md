@@ -152,9 +152,16 @@ The upcoming `0.2.0a2` Python API can turn a validated cohort summary into an
 unapproved schema-1 candidate. Call `propose_baseline` with an explicit
 `profile` and one `TargetAllowance` for every target. The result is an
 immutable `Baseline` value; the API never saves it, chooses budgets, or
-approves it. Review the report provenance, runner and dependency context,
-and each allowance before deliberately saving or using the candidate.
-CLI proposal output and a full review walkthrough are tracked separately.
+approves it. The new CLI can write a candidate only to a new path:
+
+```console
+importtime-check baseline propose --file run-1.json --file run-2.json --runner-context ubuntu24-py311 --install-context build-before --profile ci-review --budget email=150,20 --budget json=25,10 --output candidate-baseline.json
+```
+
+Review the report provenance, runner and dependency context, and each
+allowance in a separate approval PR before using the candidate as a CI
+baseline. The command never replaces an approved policy or chooses budgets.
+The full review walkthrough is tracked separately.
 
 Version `0.1.0a3` also introduced distinct, reviewed allowances for each
 recorded module. After installing the selected tool version, a

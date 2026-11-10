@@ -49,6 +49,7 @@ from ._measurement_report import (
     MeasurementReportError,
     load_measurement_report,
 )
+from ._proposal import BaselineProposalError, propose_baseline
 from ._regression import (
     _require_same_environment,
     check_baseline,
@@ -117,7 +118,7 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument("--format", choices=("text", "json"), default="text")
 
     baseline = commands.add_parser(
-        "baseline", help="record, refresh, or inspect a baseline"
+        "baseline", help="record, refresh, propose, or inspect a baseline"
     )
     baseline_commands = baseline.add_subparsers(dest="baseline_command", required=True)
     record = baseline_commands.add_parser("record", help="record a baseline file")
@@ -144,6 +145,17 @@ def _parser() -> argparse.ArgumentParser:
     refresh.add_argument("--file", required=True)
     refresh.add_argument("--replace", action="store_true")
     _add_runtime(refresh, profile=True)
+    propose = baseline_commands.add_parser(
+        "propose", help="create an unapproved candidate from saved reports"
+    )
+    propose.add_argument("--file", action="append", required=True)
+    propose.add_argument("--runner-context", required=True)
+    propose.add_argument("--install-context", required=True)
+    propose.add_argument("--profile", required=True)
+    propose.add_argument(
+        "--budget", action="append", required=True, metavar="MODULE=US,PERCENT"
+    )
+    propose.add_argument("--output", required=True)
 
     check = commands.add_parser("check", help="compare current imports to a baseline")
     check.add_argument("--baseline", required=True)
@@ -198,6 +210,19 @@ def _record_allowances(
         or arguments.max_increase_percent is not None
     ):
         raise ValueError("--budget cannot be mixed with common allowance options")
+    allowances = _parse_budget_entries(entries)
+    missing = sorted(set(modules) - allowances.keys())
+    unknown = sorted(allowances.keys() - set(modules))
+    if missing or unknown:
+        raise ValueError(
+            "--budget target set differs: "
+            f"missing: {', '.join(missing) or 'none'}; "
+            f"unknown: {', '.join(unknown) or 'none'}"
+        )
+    return None, allowances
+
+
+def _parse_budget_entries(entries: Sequence[str]) -> dict[str, TargetAllowance]:
     allowances: dict[str, TargetAllowance] = {}
     for entry in entries:
         if entry.count("=") != 1 or entry.count(",") != 1:
@@ -214,15 +239,7 @@ def _record_allowances(
         if module in allowances:
             raise ValueError(f"duplicate --budget for module {module!r}")
         allowances[module] = allowance
-    missing = sorted(set(modules) - allowances.keys())
-    unknown = sorted(allowances.keys() - set(modules))
-    if missing or unknown:
-        raise ValueError(
-            "--budget target set differs: "
-            f"missing: {', '.join(missing) or 'none'}; "
-            f"unknown: {', '.join(unknown) or 'none'}"
-        )
-    return None, allowances
+    return allowances
 
 
 def _measure(arguments: argparse.Namespace) -> int:
@@ -329,6 +346,34 @@ def _show(arguments: argparse.Namespace) -> int:
                 f"allowances {target.max_increase_us} us or "
                 f"{target.max_increase_percent}%"
             )
+    return 0
+
+
+def _propose(arguments: argparse.Namespace) -> int:
+    summary = summarize_measurement_reports(
+        _load_reports(arguments.file),
+        runner_context=arguments.runner_context,
+        install_context=arguments.install_context,
+    )
+    try:
+        allowances = _parse_budget_entries(arguments.budget)
+    except ValueError as error:
+        raise BaselineProposalError("invalid or duplicate --budget entry") from error
+    candidate = propose_baseline(
+        summary, profile=arguments.profile, per_target_allowances=allowances
+    )
+    try:
+        save_baseline(arguments.output, candidate)
+    except BaselineError as error:
+        if arguments.debug:
+            raise
+        print(
+            f"importtime-check: {error.kind}; candidate was not created",
+            file=sys.stderr,
+        )
+        return 2
+    print(f"Created unapproved candidate for {len(candidate.targets)} target(s).")
+    print("Review its evidence and budgets in a separate approval PR before CI use.")
     return 0
 
 
@@ -522,8 +567,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return _record(arguments)
             if arguments.baseline_command == "show":
                 return _show(arguments)
+            if arguments.baseline_command == "propose":
+                return _propose(arguments)
             return _refresh(arguments)
         return _check(arguments)
+    except BaselineProposalError as error:
+        if arguments.debug:
+            raise
+        details = (
+            f"; missing: {', '.join(error.missing) or 'none'}; "
+            f"unknown: {', '.join(error.unknown) or 'none'}"
+            if error.missing or error.unknown
+            else ""
+        )
+        print(f"importtime-check: {error.kind}{details}", file=sys.stderr)
+        return 2
     except MeasurementReportError as error:
         if arguments.debug:
             raise

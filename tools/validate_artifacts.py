@@ -116,6 +116,7 @@ EXPECTED_SDIST_FILES = (
     "tests/test_package_contract.py",
     "tests/test_parser.py",
     "tests/test_proposal.py",
+    "tests/test_proposal_cli.py",
     "tests/test_pytest_plugin.py",
     "tests/test_regression.py",
     "tests/test_release_preflight.py",
