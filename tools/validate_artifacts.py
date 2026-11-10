@@ -73,6 +73,7 @@ EXPECTED_SDIST_FILES = (
     "docs/examples/requirements-importtime.txt",
     "docs/examples/requirements-measurement.txt",
     "docs/guides/ci-baselines.md",
+    "docs/guides/candidate-review.md",
     "docs/guides/measurement-artifacts.md",
     "docs/releases/README.md",
     "docs/releases/v0.1.0a1.md",

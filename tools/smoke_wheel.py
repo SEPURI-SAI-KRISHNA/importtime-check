@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -349,6 +350,45 @@ def smoke_wheel(dist_dir: Path) -> Path:
         )
         if candidate.read_bytes() != original_candidate:
             raise WheelSmokeError("installed proposal replaced an existing candidate")
+
+        # Exercise the published guide's exact two-target CLI invocation
+        # against this clean installed wheel, not an editable checkout.
+        project_root = Path(__file__).resolve().parents[1]
+        guide = (project_root / "docs/guides/candidate-review.md").read_text(
+            encoding="utf-8"
+        )
+        guide_lines = [
+            line
+            for line in guide.splitlines()
+            if line.startswith(
+                "importtime-check baseline propose --file "
+                "tests/fixtures/report-v1-before-1.json "
+            )
+        ]
+        if len(guide_lines) != 1:
+            raise WheelSmokeError("guide must have one archived proposal command")
+        guide_arguments = shlex.split(guide_lines[0])
+        if guide_arguments.pop(0) != "importtime-check":
+            raise WheelSmokeError("guide command has an unexpected launcher")
+        guide_output = temporary_path / "guide-candidate.json"
+        for index, value in enumerate(guide_arguments[:-1]):
+            if value == "--file":
+                guide_arguments[index + 1] = str(
+                    project_root / guide_arguments[index + 1]
+                )
+            elif value == "--output":
+                guide_arguments[index + 1] = str(guide_output)
+        guide_review = _run((*command, *guide_arguments), cwd=temporary_path)
+        guide_candidate = json.loads(guide_output.read_bytes())
+        if (
+            "Unapproved baseline candidate;" not in guide_review.stdout
+            or guide_candidate["schema_version"] != 1
+            or guide_candidate["targets"]["email"]["baseline_cumulative_us"] != 11
+            or guide_candidate["targets"]["email"]["max_increase_us"] != 3
+            or guide_candidate["targets"]["json"]["baseline_cumulative_us"] != 42
+            or guide_candidate["targets"]["json"]["max_increase_us"] != 8
+        ):
+            raise WheelSmokeError("guide's installed-wheel proposal differs")
         summarized = _run(
             (
                 *command,
