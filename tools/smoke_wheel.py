@@ -42,6 +42,7 @@ assert util.find_spec("pytest") is None
 assert "pytest" not in sys.modules
 assert callable(importtime_check.refresh_baseline)
 assert callable(importtime_check.propose_baseline)
+assert callable(importtime_check.explain_baseline_proposal)
 assert callable(importtime_check.decode_measurement_report)
 assert callable(importtime_check.load_measurement_report)
 assert any(
@@ -322,6 +323,22 @@ def smoke_wheel(dist_dir: Path) -> Path:
         except (KeyError, TypeError, ValueError) as error:
             raise WheelSmokeError("invalid installed candidate baseline") from error
         original_candidate = candidate.read_bytes()
+        reviewed_candidate = temporary_path / "candidate-with-review.json"
+        reviewed = _run(
+            (
+                *proposal_command[:-1],
+                str(reviewed_candidate),
+                "--compare-baseline",
+                str(candidate),
+            ),
+            cwd=temporary_path,
+        )
+        if (
+            "Changed policy fields:\n  none\n" not in reviewed.stdout
+            or str(temporary_path) in reviewed.stdout
+            or reviewed_candidate.read_bytes() != original_candidate
+        ):
+            raise WheelSmokeError("installed proposal review is not deterministic")
         _expect_report_error(
             proposal_command,
             cwd=temporary_path,

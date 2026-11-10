@@ -181,6 +181,7 @@ def test_public_exports_are_exact() -> None:
         "decode_measurement_report",
         "encode_baseline",
         "evaluate_baseline",
+        "explain_baseline_proposal",
         "load_baseline",
         "load_measurement_report",
         "measure_import",
