@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -25,10 +26,14 @@ import pytest
 
 import importtime_check._cli as cli
 from importtime_check import (
+    Baseline,
     BaselineError,
+    EnvironmentIdentity,
+    SamplingPolicy,
     TargetBaseline,
     decode_baseline,
     encode_baseline,
+    save_baseline,
 )
 
 
@@ -110,6 +115,113 @@ def test_two_target_candidate_is_canonical_and_requires_review(
     assert candidate.targets["json"] == TargetBaseline(41, 0, "0")
     assert cli.main(_args(second, first, tmp_path / "reverse.json")) == 0
     assert (tmp_path / "reverse.json").read_bytes() == output.read_bytes()
+
+
+def test_explain_prints_review_evidence_without_private_paths(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first, second, output = _inputs(tmp_path)
+    assert cli.main(_args(first, second, output, "--explain")) == 0
+    rendered = capsys.readouterr()
+    assert rendered.err == ""
+    assert rendered.out.startswith("Unapproved baseline candidate;")
+    assert (
+        f"Candidate SHA-256: {hashlib.sha256(output.read_bytes()).hexdigest()}"
+        in rendered.out
+    )
+    assert "Source reports: 2" in rendered.out
+    assert "Runner context: ci-runner" in rendered.out
+    assert "Install context: wheel-under-test" in rendered.out
+    assert "profile ci-reviewed" in rendered.out
+    assert "candidate median 11 us; allowances 5 us or 2.5%" in rendered.out
+    assert "candidate median 41 us; allowances 0 us or 0%" in rendered.out
+    assert str(tmp_path) not in rendered.out
+    assert "Changed policy fields:" not in rendered.out
+    raw = output.read_bytes()
+    assert b"Source reports" not in raw and b"ci-runner" not in raw
+    output.unlink()
+    assert cli.main(_args(second, first, output, "--explain")) == 0
+    assert capsys.readouterr().out == rendered.out
+    output.unlink()
+    unsafe_profile = _args(first, second, output, "--explain")
+    unsafe_profile[unsafe_profile.index("--profile") + 1] = "C:/private/profile"
+    assert cli.main(unsafe_profile) == 0
+    redacted = capsys.readouterr()
+    assert "profile [redacted]" in redacted.out
+    assert "C:/private/profile" not in redacted.out
+
+
+def test_optional_comparison_names_fields_without_writing_old_policy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first, second, output = _inputs(tmp_path)
+    approved = tmp_path / "approved.json"
+    save_baseline(
+        approved,
+        Baseline(
+            EnvironmentIdentity("cpython", "3.12", "linux", "x86_64", "old"),
+            SamplingPolicy(0, 1),
+            {"email": TargetBaseline(7, 1, "1")},
+        ),
+    )
+    old_bytes = approved.read_bytes()
+    assert (
+        cli.main(_args(first, second, output, "--compare-baseline", str(approved))) == 0
+    )
+    rendered = capsys.readouterr()
+    assert rendered.err == ""
+    assert "Changed policy fields:" in rendered.out
+    assert "  environment.python\n" in rendered.out
+    assert "  environment.profile\n" in rendered.out
+    assert "  targets.added.json\n" in rendered.out
+    assert "  targets.email.baseline_cumulative_us\n" in rendered.out
+    assert str(approved) not in rendered.out
+    assert approved.read_bytes() == old_bytes
+    assert decode_baseline(output.read_bytes()).targets["email"] == TargetBaseline(
+        11, 5, "2.5"
+    )
+    assert output.read_bytes() == encode_baseline(decode_baseline(output.read_bytes()))
+
+
+@pytest.mark.parametrize("invalid", ("missing", "invalid", "future"))
+def test_invalid_comparison_policy_leaves_no_candidate_and_no_path_leak(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], invalid: str
+) -> None:
+    first, second, output = _inputs(tmp_path)
+    previous = tmp_path / "private-approved.json"
+    if invalid == "invalid":
+        previous.write_text("{secret-token", encoding="utf-8")
+    elif invalid == "future":
+        previous.write_text('{"schema_version":2}', encoding="utf-8")
+    assert (
+        cli.main(_args(first, second, output, "--compare-baseline", str(previous))) == 2
+    )
+    result = capsys.readouterr()
+    assert result.out == ""
+    assert result.err.startswith("importtime-check: ")
+    assert "comparison baseline was not loaded" in result.err
+    assert str(previous) not in result.err
+    assert "secret-token" not in result.err
+    assert not output.exists()
+    with pytest.raises(BaselineError):
+        cli.main(
+            [
+                "--debug",
+                *_args(first, second, output, "--compare-baseline", str(previous)),
+            ]
+        )
+
+
+def test_explanation_is_not_printed_if_candidate_cannot_be_saved(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first, second, output = _inputs(tmp_path)
+    output.write_bytes(b"old candidate")
+    assert cli.main(_args(first, second, output, "--explain")) == 2
+    result = capsys.readouterr()
+    assert result.out == ""
+    assert result.err == "importtime-check: io-error; candidate was not created\n"
+    assert output.read_bytes() == b"old candidate"
 
 
 @pytest.mark.parametrize(

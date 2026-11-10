@@ -49,7 +49,11 @@ from ._measurement_report import (
     MeasurementReportError,
     load_measurement_report,
 )
-from ._proposal import BaselineProposalError, propose_baseline
+from ._proposal import (
+    BaselineProposalError,
+    explain_baseline_proposal,
+    propose_baseline,
+)
 from ._regression import (
     _require_same_environment,
     check_baseline,
@@ -156,6 +160,8 @@ def _parser() -> argparse.ArgumentParser:
         "--budget", action="append", required=True, metavar="MODULE=US,PERCENT"
     )
     propose.add_argument("--output", required=True)
+    propose.add_argument("--explain", action="store_true")
+    propose.add_argument("--compare-baseline")
 
     check = commands.add_parser("check", help="compare current imports to a baseline")
     check.add_argument("--baseline", required=True)
@@ -362,6 +368,23 @@ def _propose(arguments: argparse.Namespace) -> int:
     candidate = propose_baseline(
         summary, profile=arguments.profile, per_target_allowances=allowances
     )
+    previous = None
+    if arguments.compare_baseline is not None:
+        try:
+            previous = load_baseline(arguments.compare_baseline)
+        except BaselineError as error:
+            if arguments.debug:
+                raise
+            print(
+                f"importtime-check: {error.kind}; comparison baseline was not loaded",
+                file=sys.stderr,
+            )
+            return 2
+    review = (
+        explain_baseline_proposal(summary, candidate, previous=previous)
+        if arguments.explain or previous is not None
+        else None
+    )
     try:
         save_baseline(arguments.output, candidate)
     except BaselineError as error:
@@ -372,6 +395,9 @@ def _propose(arguments: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
+    if review is not None:
+        sys.stdout.write(review)
+        return 0
     print(f"Created unapproved candidate for {len(candidate.targets)} target(s).")
     print("Review its evidence and budgets in a separate approval PR before CI use.")
     return 0

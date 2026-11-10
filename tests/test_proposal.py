@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
@@ -41,6 +42,7 @@ from importtime_check import (
     decode_baseline,
     encode_baseline,
     evaluate_baseline,
+    explain_baseline_proposal,
     load_baseline,
     load_measurement_report,
     propose_baseline,
@@ -64,6 +66,106 @@ def _cohort() -> CohortSummary:
 
 def _allowances() -> dict[str, TargetAllowance]:
     return {"json": TargetAllowance(8, "10.0"), "email": TargetAllowance(3, "15")}
+
+
+def test_explanation_contains_deterministic_evidence_outside_schema_one() -> None:
+    cohort = _cohort()
+    candidate = propose_baseline(
+        cohort, profile="ci-locked-v1", per_target_allowances=_allowances()
+    )
+    review = explain_baseline_proposal(cohort, candidate)
+    assert review == explain_baseline_proposal(cohort, candidate)
+    assert (
+        f"Candidate SHA-256: {hashlib.sha256(encode_baseline(candidate)).hexdigest()}"
+        in review
+    )
+    assert f"Source reports: {cohort.report_count}" in review
+    for digest in cohort.sources_sha256:
+        assert f"  {digest}\n" in review
+    assert review.index(cohort.sources_sha256[0]) < review.index(
+        cohort.sources_sha256[1]
+    )
+    assert "Runner context: ubuntu24-py311" in review
+    assert "Install context: build-before" in review
+    assert "profile ci-locked-v1" in review
+    assert "email: run medians " in review
+    assert "candidate median 11 us; allowances 3 us or 15%" in review
+    assert "candidate median 42 us; allowances 8 us or 10%" in review
+    assert "Source SHA-256 digests:" in review
+    assert "source hashes do not prove origin" in review
+    assert str(FIXTURES) not in review
+    raw = encode_baseline(candidate)
+    assert b"sources_sha256" not in raw and b"runner_context" not in raw
+
+
+def test_explanation_redacts_unsafe_profile_and_names_changed_policy_fields() -> None:
+    cohort = _cohort()
+    candidate = propose_baseline(
+        cohort, profile="C:/private/review", per_target_allowances=_allowances()
+    )
+    prior = Baseline(
+        EnvironmentIdentity("cpython", "3.12", "darwin", "arm64", "old-profile"),
+        SamplingPolicy(0, 2),
+        {
+            "email": TargetBaseline(5, 1, "1"),
+            "extra": TargetBaseline(9, 0, "0"),
+        },
+    )
+    review = explain_baseline_proposal(cohort, candidate, previous=prior)
+    assert "profile [redacted]" in review
+    assert "C:/private/review" not in review
+    assert "  environment.python\n" in review
+    assert "  environment.platform\n" in review
+    assert "  environment.machine\n" in review
+    assert "  environment.profile\n" in review
+    assert "  sampling.warmups\n" in review
+    assert "  sampling.samples\n" in review
+    assert "  targets.removed.extra\n" in review
+    assert "  targets.added.json\n" in review
+    assert "  targets.email.baseline_cumulative_us\n" in review
+    assert "  targets.email.max_increase_us\n" in review
+    assert "  targets.email.max_increase_percent\n" in review
+    assert "old-profile" not in review
+    assert "Changed policy fields:\n" in review
+    assert "  none\n" in explain_baseline_proposal(
+        cohort, candidate, previous=candidate
+    )
+
+
+def test_explanation_rejects_inconsistent_or_wrong_inputs() -> None:
+    cohort = _cohort()
+    candidate = propose_baseline(
+        cohort, profile="reviewed", per_target_allowances=_allowances()
+    )
+    for bad_cohort, bad_candidate, old in (
+        (None, candidate, None),
+        (cohort, None, None),
+        (cohort, candidate, object()),
+    ):
+        with pytest.raises(BaselineProposalError):
+            explain_baseline_proposal(
+                cast(Any, bad_cohort), cast(Any, bad_candidate), previous=cast(Any, old)
+            )
+    for changed in (
+        Baseline(
+            EnvironmentIdentity("cpython", "3.12", "linux", "x86_64", "reviewed"),
+            candidate.sampling,
+            candidate.targets,
+        ),
+        Baseline(candidate.environment, SamplingPolicy(0, 2), candidate.targets),
+        Baseline(
+            candidate.environment,
+            candidate.sampling,
+            {"email": candidate.targets["email"]},
+        ),
+        Baseline(
+            candidate.environment,
+            candidate.sampling,
+            {"email": TargetBaseline(99, 3, "15"), "json": candidate.targets["json"]},
+        ),
+    ):
+        with pytest.raises(BaselineProposalError, match="does not match"):
+            explain_baseline_proposal(cohort, changed)
 
 
 def test_candidate_uses_upper_median_and_only_explicit_policy(tmp_path: Path) -> None:

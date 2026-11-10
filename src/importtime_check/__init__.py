@@ -45,7 +45,11 @@ from ._measurement_report import (
 )
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
-from ._proposal import BaselineProposalError, propose_baseline
+from ._proposal import (
+    BaselineProposalError,
+    explain_baseline_proposal,
+    propose_baseline,
+)
 from ._regression import (
     RegressionReport,
     TargetRegressionResult,
@@ -89,6 +93,7 @@ __all__ = (
     "decode_measurement_report",
     "encode_baseline",
     "evaluate_baseline",
+    "explain_baseline_proposal",
     "load_baseline",
     "load_measurement_report",
     "measure_import",
