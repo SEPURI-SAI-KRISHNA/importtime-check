@@ -64,6 +64,7 @@ EXPECTED_SDIST_FILES = (
     "docs/design/0010-multi-target-measurement-reports.md",
     "docs/design/0011-offline-report-cohorts.md",
     "docs/design/0012-report-to-baseline-proposals.md",
+    "docs/design/0013-import-profile-evidence.md",
     "docs/design/README.md",
     "docs/examples/check-importtime.yml",
     "docs/examples/collect-importtime-measurement.yml",
