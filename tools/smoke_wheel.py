@@ -309,8 +309,11 @@ def smoke_wheel(dist_dir: Path) -> Path:
             "--output",
             str(candidate),
         )
-        proposed = _run(proposal_command, cwd=temporary_path)
-        if "unapproved candidate" not in proposed.stdout:
+        proposed = _run((*proposal_command, "--explain"), cwd=temporary_path)
+        if (
+            "Unapproved baseline candidate;" not in proposed.stdout
+            or "Candidate SHA-256:" not in proposed.stdout
+        ):
             raise WheelSmokeError("installed proposal did not require review")
         try:
             candidate_document = json.loads(candidate.read_bytes())

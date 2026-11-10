@@ -4,6 +4,17 @@ To collect several observations **without** approving a budget or gating a
 pull request, use the separate [measurement artifact guide](measurement-artifacts.md).
 The steps below create and check reviewed baseline policy.
 
+For a report-to-candidate path, the separate
+[manual proposal workflow](../examples/propose-importtime-baseline.yml) collects
+three complete reports, creates an unapproved schema-1 candidate with explicit
+per-target allowances, and uploads that candidate plus a review explanation.
+Copy its [exact requirements](../examples/requirements-candidate.txt) into the
+consuming project's `ci/` directory. Its `0.2.0a2` tool pin becomes installable
+after that release is published. The workflow never commits the candidate or
+changes the required check's `ci/importtime-baseline.json`; promote policy only
+through a separate reviewed PR. The full report-to-policy review walkthrough
+is tracked separately.
+
 This is a small, runnable example for a **consuming project**. It measures the
 `packaging` and `packaging.version` modules as stand-ins for two of your own
 installed modules. The example files are
