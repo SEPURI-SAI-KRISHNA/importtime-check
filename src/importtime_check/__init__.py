@@ -45,6 +45,13 @@ from ._measurement_report import (
 )
 from ._model import ImportTimeEvent, ImportTimeParseResult
 from ._parser import ImportTimeParseError, parse_importtime
+from ._profile import (
+    ImportProfile,
+    ImportProfileError,
+    ProfileRun,
+    ProfileTarget,
+    capture_import_profile,
+)
 from ._proposal import (
     BaselineProposalError,
     explain_baseline_proposal,
@@ -71,12 +78,16 @@ __all__ = (
     "EnvironmentIdentity",
     "ImportMeasurement",
     "ImportMeasurementError",
+    "ImportProfile",
+    "ImportProfileError",
     "ImportSampleSet",
     "ImportTimeEvent",
     "ImportTimeParseError",
     "ImportTimeParseResult",
     "MeasurementReport",
     "MeasurementReportError",
+    "ProfileRun",
+    "ProfileTarget",
     "RegressionReport",
     "ReportIdentity",
     "ReportTarget",
@@ -87,6 +98,7 @@ __all__ = (
     "TargetCohortSummary",
     "TargetRegressionResult",
     "__version__",
+    "capture_import_profile",
     "check_baseline",
     "compare_report_cohorts",
     "decode_baseline",
