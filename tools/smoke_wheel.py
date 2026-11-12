@@ -46,6 +46,21 @@ assert callable(importtime_check.propose_baseline)
 assert callable(importtime_check.explain_baseline_proposal)
 assert callable(importtime_check.decode_measurement_report)
 assert callable(importtime_check.load_measurement_report)
+profile = importtime_check.capture_import_profile(
+    ("json", "email"), warmups=0, samples=1
+)
+assert profile.profile_version == 1
+assert profile.source_sha256 is None
+assert tuple(profile.targets) == ("email", "json")
+assert profile.sampling.warmups == 0
+assert profile.sampling.samples == 1
+assert all(
+    len(target.runs) == 1
+    and target.runs[0].phase == "sample"
+    and target.runs[0].number == 1
+    and target.runs[0].events[-1].module == target.module
+    for target in profile.targets.values()
+)
 assert any(
     entry.name == "importtime-check"
     and entry.value == "importtime_check._cli:main"

@@ -213,14 +213,22 @@ def _measure_import_validated(
             reason=str(error),
         ) from error
 
-    stderr = completed.stderr or ""
-    if completed.returncode != 0:
+    return _measurement_from_stderr(
+        module, interpreter, completed.stderr or "", completed.returncode
+    )
+
+
+def _measurement_from_stderr(
+    module: str, interpreter: str, stderr: str, returncode: int
+) -> ImportMeasurement:
+    """Apply the published target-selection rules to one complete child stream."""
+    if returncode != 0:
         raise ImportMeasurementError(
             module=module,
             kind="exit",
             python_executable=interpreter,
-            reason=f"child exited with code {completed.returncode}",
-            returncode=completed.returncode,
+            reason=f"child exited with code {returncode}",
+            returncode=returncode,
             stderr=stderr,
         )
 
@@ -232,7 +240,7 @@ def _measure_import_validated(
             kind="parse",
             python_executable=interpreter,
             reason=f"invalid import-time output on line {error.line_number}",
-            returncode=completed.returncode,
+            returncode=returncode,
             stderr=stderr,
         ) from error
 
@@ -243,7 +251,7 @@ def _measure_import_validated(
             kind="missing-target",
             python_executable=interpreter,
             reason="no import-time event matched the requested module",
-            returncode=completed.returncode,
+            returncode=returncode,
             stderr=stderr,
         )
     if len(matches) != 1:
@@ -252,7 +260,7 @@ def _measure_import_validated(
             kind="ambiguous-target",
             python_executable=interpreter,
             reason="multiple import-time events matched the requested module",
-            returncode=completed.returncode,
+            returncode=returncode,
             stderr=stderr,
         )
     return ImportMeasurement(module, interpreter, parsed, matches[0])
