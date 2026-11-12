@@ -1,0 +1,22 @@
+{
+  "environment": {
+    "implementation": "cpython",
+    "machine": "amd64",
+    "platform": "win32",
+    "profile": "default",
+    "python": "3.11"
+  },
+  "sampling": {
+    "samples": 5,
+    "statistic": "upper_median",
+    "warmups": 1
+  },
+  "schema_version": 1,
+  "targets": {
+    "json": {
+      "baseline_cumulative_us": 420,
+      "max_increase_percent": "10",
+      "max_increase_us": 25
+    }
+  }
+}

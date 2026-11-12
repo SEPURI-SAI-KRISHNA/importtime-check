@@ -16,3 +16,11 @@ Neither file contains private paths, stderr, secrets, or host-specific data.
 Do not regenerate these bytes from the current emitter during tests. An
 incompatible format change requires a reviewed design and migration decision;
 new fixtures should be added rather than silently replacing these v1 files.
+
+`profile-v1.json` is the fixed import-profile example from
+[ADR 0013](../../docs/design/0013-import-profile-evidence.md). Its repeated
+`json.decoder` rows are separate occurrences. `baseline-schema1.json` freezes
+the older baseline shape so profile loading cannot quietly reinterpret it.
+Their exact bytes are pinned in the profile artifact tests alongside the
+measurement report fixtures. These are synthetic examples, not measurements
+or recommended CI thresholds.
