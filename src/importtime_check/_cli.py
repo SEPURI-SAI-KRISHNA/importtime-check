@@ -49,6 +49,10 @@ from ._measurement_report import (
     MeasurementReportError,
     load_measurement_report,
 )
+from ._profile import ImportProfileError
+from ._profile_artifact import load_import_profile
+from ._profile_inspection import inspect_import_profile
+from ._profile_report import profile_inspection_json, profile_inspection_text
 from ._proposal import (
     BaselineProposalError,
     explain_baseline_proposal,
@@ -120,6 +124,18 @@ def _parser() -> argparse.ArgumentParser:
     compare.add_argument("--before-install-context", required=True)
     compare.add_argument("--after-install-context", required=True)
     compare.add_argument("--format", choices=("text", "json"), default="text")
+
+    profile = commands.add_parser("profile", help="inspect saved import profiles")
+    profile_commands = profile.add_subparsers(dest="profile_command", required=True)
+    profile_show = profile_commands.add_parser(
+        "show", help="rank events from one selected profile run"
+    )
+    profile_show.add_argument("--file", required=True)
+    profile_show.add_argument("--target", required=True)
+    profile_show.add_argument("--phase", choices=("warmup", "sample"), required=True)
+    profile_show.add_argument("--run", dest="run_number", type=int, required=True)
+    profile_show.add_argument("--limit", type=int, default=20)
+    profile_show.add_argument("--format", choices=("text", "json"), default="text")
 
     baseline = commands.add_parser(
         "baseline", help="record, refresh, propose, or inspect a baseline"
@@ -527,6 +543,22 @@ def _summarize(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _profile_show(arguments: argparse.Namespace) -> int:
+    inspection = inspect_import_profile(
+        load_import_profile(arguments.file),
+        target=arguments.target,
+        phase=arguments.phase,
+        run_number=arguments.run_number,
+        limit=arguments.limit,
+    )
+    sys.stdout.write(
+        profile_inspection_json(inspection)
+        if arguments.format == "json"
+        else profile_inspection_text(inspection)
+    )
+    return 0
+
+
 def _print_report_error(
     error: MeasurementReportError, *, side: str | None = None
 ) -> None:
@@ -588,6 +620,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if arguments.report_command == "summarize"
                 else _compare(arguments)
             )
+        if arguments.command == "profile":
+            return _profile_show(arguments)
         if arguments.command == "baseline":
             if arguments.baseline_command == "record":
                 return _record(arguments)
@@ -597,6 +631,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return _propose(arguments)
             return _refresh(arguments)
         return _check(arguments)
+    except ImportProfileError as error:
+        if arguments.debug:
+            raise
+        print(
+            f"importtime-check: profile {error.kind}: {error.reason}", file=sys.stderr
+        )
+        return 2
     except BaselineProposalError as error:
         if arguments.debug:
             raise

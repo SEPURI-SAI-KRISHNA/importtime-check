@@ -49,14 +49,17 @@ assert callable(importtime_check.load_measurement_report)
 profile = importtime_check.capture_import_profile(
     ("json", "email"), warmups=0, samples=1
 )
-from tempfile import TemporaryDirectory
-with TemporaryDirectory() as directory:
-    path = Path(directory) / "profile.json"
-    raw = importtime_check.encode_import_profile(profile)
-    path.write_bytes(raw)
-    loaded = importtime_check.load_import_profile(path)
-    assert loaded.source_sha256 is not None
-    assert importtime_check.encode_import_profile(loaded) == raw
+path = Path(sys.argv[1])
+raw = importtime_check.encode_import_profile(profile)
+path.write_bytes(raw)
+loaded = importtime_check.load_import_profile(path)
+assert loaded.source_sha256 is not None
+assert importtime_check.encode_import_profile(loaded) == raw
+inspection = importtime_check.inspect_import_profile(
+    loaded, target="json", phase="sample", run_number=1, limit=2
+)
+assert inspection.target == "json"
+assert len(inspection.self_time) == len(inspection.cumulative_time) == 2
 assert profile.profile_version == 1
 assert profile.source_sha256 is None
 assert tuple(profile.targets) == ("email", "json")
@@ -230,7 +233,11 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 str(wheel),
             )
         )
-        _run((str(python), "-I", "-c", SMOKE_PROGRAM), cwd=temporary_path)
+        profile_file = temporary_path / "profile.json"
+        _run(
+            (str(python), "-I", "-c", SMOKE_PROGRAM, str(profile_file)),
+            cwd=temporary_path,
+        )
         command_path = _environment_command(environment)
         if not command_path.is_file():
             raise WheelSmokeError("installed console command is missing")
@@ -250,6 +257,37 @@ def smoke_wheel(dist_dir: Path) -> Path:
                 "from importtime_check._cli import main; raise SystemExit(main())",
             )
             _run((*command, "--help"), cwd=temporary_path)
+        shown = _run(
+            (
+                *command,
+                "profile",
+                "show",
+                "--file",
+                str(profile_file),
+                "--target",
+                "json",
+                "--phase",
+                "sample",
+                "--run",
+                "1",
+                "--limit",
+                "2",
+                "--format",
+                "json",
+            ),
+            cwd=temporary_path,
+        )
+        inspection_document = json.loads(shown.stdout)
+        if (
+            inspection_document.get("inspection_type") != "import-profile-run"
+            or inspection_document.get("target") != "json"
+            or inspection_document.get("event_count", 0) < 2
+            or len(inspection_document["rankings"]["self_time"]["rows"]) != 2
+            or not inspection_document["rankings"]["cumulative_time"][
+                "overlapping_not_additive"
+            ]
+        ):
+            raise WheelSmokeError("invalid installed profile inspection JSON")
         _run(
             (
                 *command,
