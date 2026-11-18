@@ -148,6 +148,11 @@ do not collect imports, select budgets, or return a regression verdict.
 Matching report identity omits dependencies, Python patch version, hardware,
 and host load. The published `0.1.0a4` wheel does not include these commands.
 
+The reviewed source also has opt-in, versioned import-profile evidence and
+selected-run hotspot inspection. This is **not** in the published `0.2.0a2`
+wheel. The [import-profile guide](docs/guides/import-profiles.md) shows a
+pinned, two-target collection and read-only review without changing policy.
+
 The `0.2.0a2` Python API can turn a validated cohort summary into an
 unapproved schema-1 candidate. Call `propose_baseline` with an explicit
 `profile` and one `TargetAllowance` for every target. The result is an

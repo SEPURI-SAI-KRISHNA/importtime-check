@@ -137,6 +137,31 @@ assert comparison.after.targets["email"].spread_us == 1
 assert not hasattr(comparison, "status")
 """
 
+PROFILE_READER_PROGRAM = """
+import hashlib
+from pathlib import Path
+import sys
+from importtime_check import (
+    encode_import_profile,
+    inspect_import_profile,
+    load_import_profile,
+)
+
+path = Path(sys.argv[1])
+raw = path.read_bytes()
+loaded = load_import_profile(path)
+assert loaded.profile_version == 1
+assert loaded.source_sha256 == hashlib.sha256(raw).hexdigest()
+assert encode_import_profile(loaded) == raw
+assert loaded.sampling.samples == 1
+selected = inspect_import_profile(
+    loaded, target="json", phase="sample", run_number=1, limit=2
+)
+assert selected.source_sha256 == loaded.source_sha256
+assert selected.event_count == 3
+assert [row.occurrence for row in selected.cumulative_time] == [3, 2]
+"""
+
 
 class WheelSmokeError(RuntimeError):
     """The built wheel could not satisfy its clean-install contract."""
@@ -186,8 +211,8 @@ def _run(
     return completed
 
 
-def _expect_report_error(command: Sequence[str], *, cwd: Path, expected: str) -> None:
-    """Require the installed command to reject bad reports without stdout."""
+def _expect_cli_error(command: Sequence[str], *, cwd: Path, expected: str) -> None:
+    """Require the installed command to reject bad input without stdout."""
     try:
         completed = subprocess.run(
             command,
@@ -201,13 +226,13 @@ def _expect_report_error(command: Sequence[str], *, cwd: Path, expected: str) ->
             env=_clean_environment(),
         )
     except subprocess.TimeoutExpired as error:
-        raise WheelSmokeError("rejected report command timed out") from error
+        raise WheelSmokeError("rejected command timed out") from error
     if (
         completed.returncode != 2
         or completed.stdout != ""
         or completed.stderr.strip() != expected
     ):
-        raise WheelSmokeError("installed command did not safely reject a bad report")
+        raise WheelSmokeError("installed command did not safely reject bad input")
 
 
 def smoke_wheel(dist_dir: Path) -> Path:
@@ -288,6 +313,96 @@ def smoke_wheel(dist_dir: Path) -> Path:
             ]
         ):
             raise WheelSmokeError("invalid installed profile inspection JSON")
+        project_root = Path(__file__).resolve().parents[1]
+        fixtures = project_root / "tests/fixtures"
+        for name in ("profile-v1.json", "profile-v1-two-target.json"):
+            _run(
+                (
+                    str(python),
+                    "-I",
+                    "-c",
+                    PROFILE_READER_PROGRAM,
+                    str(fixtures / name),
+                ),
+                cwd=temporary_path,
+            )
+        for name, category, reason in (
+            (
+                "profile-v1-duplicate-key.json",
+                "invalid",
+                "invalid import profile artifact",
+            ),
+            (
+                "profile-v1-invalid-event.json",
+                "invalid",
+                "invalid import profile artifact",
+            ),
+            (
+                "profile-v2-unsupported.json",
+                "unsupported-version",
+                "unsupported profile_version",
+            ),
+        ):
+            _expect_cli_error(
+                (
+                    *command,
+                    "profile",
+                    "show",
+                    "--file",
+                    str(fixtures / name),
+                    "--target",
+                    "json",
+                    "--phase",
+                    "sample",
+                    "--run",
+                    "1",
+                ),
+                cwd=temporary_path,
+                expected=f"importtime-check: profile {category}: {reason}",
+            )
+
+        # Run the guide's exact two-target commands from this installed wheel.
+        profile_guide = (project_root / "docs/guides/import-profiles.md").read_text(
+            encoding="utf-8"
+        )
+        if 'python -m pip install "importtime-check==0.3.0a1"' not in profile_guide:
+            raise WheelSmokeError("profile guide must pin the intended alpha")
+        captures = [
+            line
+            for line in profile_guide.splitlines()
+            if line.startswith('python -I -c "from pathlib import Path;')
+        ]
+        shows = [
+            line
+            for line in profile_guide.splitlines()
+            if line.startswith("importtime-check profile show --file profile.json ")
+        ]
+        if len(captures) != 1 or len(shows) != 1:
+            raise WheelSmokeError("profile guide must contain one two-target example")
+        capture_args = shlex.split(captures[0])
+        show_args = shlex.split(shows[0])
+        if (
+            capture_args[:3] != ["python", "-I", "-c"]
+            or show_args[0] != "importtime-check"
+        ):
+            raise WheelSmokeError("profile guide has unexpected launchers")
+        guide_dir = temporary_path / "profile-guide"
+        guide_dir.mkdir()
+        _run((str(python), *capture_args[1:]), cwd=guide_dir)
+        guide_shown = _run((*command, *show_args[1:]), cwd=guide_dir)
+        try:
+            guide_document = json.loads(guide_shown.stdout)
+            if (
+                guide_document["inspection_type"] != "import-profile-run"
+                or guide_document["target"] != "json"
+                or guide_document["phase"] != "sample"
+                or guide_document["run_number"] != 1
+                or "status" in guide_document
+                or {path.name for path in guide_dir.iterdir()} != {"profile.json"}
+            ):
+                raise ValueError("unexpected profile guide output")
+        except (KeyError, TypeError, ValueError) as error:
+            raise WheelSmokeError("installed profile guide differs") from error
         _run(
             (
                 *command,
@@ -404,7 +519,7 @@ def smoke_wheel(dist_dir: Path) -> Path:
             or reviewed_candidate.read_bytes() != original_candidate
         ):
             raise WheelSmokeError("installed proposal review is not deterministic")
-        _expect_report_error(
+        _expect_cli_error(
             proposal_command,
             cwd=temporary_path,
             expected="importtime-check: io-error; candidate was not created",
@@ -414,7 +529,6 @@ def smoke_wheel(dist_dir: Path) -> Path:
 
         # Exercise the published guide's exact two-target CLI invocation
         # against this clean installed wheel, not an editable checkout.
-        project_root = Path(__file__).resolve().parents[1]
         guide = (project_root / "docs/guides/candidate-review.md").read_text(
             encoding="utf-8"
         )
@@ -536,14 +650,14 @@ def smoke_wheel(dist_dir: Path) -> Path:
             malformed
         )
         malformed_proposal[-1] = str(rejected_candidate)
-        _expect_report_error(
+        _expect_cli_error(
             malformed_proposal,
             cwd=temporary_path,
             expected="importtime-check: report-invalid at report #2",
         )
         if rejected_candidate.exists():
             raise WheelSmokeError("installed proposal wrote after a bad report")
-        _expect_report_error(
+        _expect_cli_error(
             (
                 *command,
                 "report",
@@ -567,7 +681,7 @@ def smoke_wheel(dist_dir: Path) -> Path:
             '{"report_type":"measurement","report_version":2}',
             encoding="utf-8",
         )
-        _expect_report_error(
+        _expect_cli_error(
             (
                 *command,
                 "report",
