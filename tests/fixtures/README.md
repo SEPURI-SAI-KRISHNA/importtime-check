@@ -29,3 +29,11 @@ or recommended CI thresholds.
 tests. It deliberately includes repeated names, equal self times, and zero
 self time; rankings retain original occurrence numbers and never sum
 overlapping cumulative times.
+
+Three archived profile failures stay separate from the valid fixtures:
+`profile-v1-duplicate-key.json` repeats a root key, `profile-v1-invalid-event.json`
+omits the selected target's unique event, and `profile-v2-unsupported.json`
+declares a future version. Their exact bytes are pinned in compatibility tests.
+All three must fail closed with safe categories, never become partial evidence
+or be reinterpreted as version 1. Do not regenerate them from the current
+encoder or replace their bytes silently.

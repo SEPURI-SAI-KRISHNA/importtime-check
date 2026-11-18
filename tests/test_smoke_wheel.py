@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.smoke_wheel import WheelSmokeError, _expect_report_error, _run
+from tools.smoke_wheel import WheelSmokeError, _expect_cli_error, _run
 
 
 def test_nonzero_installed_command_fails_smoke(tmp_path: Path) -> None:
@@ -32,14 +32,14 @@ def test_nonzero_installed_command_fails_smoke(tmp_path: Path) -> None:
 def test_bad_report_must_fail_with_exact_safe_diagnostic(tmp_path: Path) -> None:
     accepted = (sys.executable, "-c", "print('unexpected success')")
     with pytest.raises(WheelSmokeError, match="did not safely reject"):
-        _expect_report_error(accepted, cwd=tmp_path, expected="report-invalid")
+        _expect_cli_error(accepted, cwd=tmp_path, expected="report-invalid")
 
     rejected = (
         sys.executable,
         "-c",
         "import sys; print('importtime-check: report-invalid at report #2', file=sys.stderr); raise SystemExit(2)",
     )
-    _expect_report_error(
+    _expect_cli_error(
         rejected,
         cwd=tmp_path,
         expected="importtime-check: report-invalid at report #2",
