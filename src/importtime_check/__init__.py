@@ -53,6 +53,11 @@ from ._profile import (
     capture_import_profile,
 )
 from ._profile_artifact import encode_import_profile, load_import_profile
+from ._profile_inspection import (
+    ProfileInspection,
+    ProfileOccurrence,
+    inspect_import_profile,
+)
 from ._proposal import (
     BaselineProposalError,
     explain_baseline_proposal,
@@ -87,6 +92,8 @@ __all__ = (
     "ImportTimeParseResult",
     "MeasurementReport",
     "MeasurementReportError",
+    "ProfileInspection",
+    "ProfileOccurrence",
     "ProfileRun",
     "ProfileTarget",
     "RegressionReport",
@@ -108,6 +115,7 @@ __all__ = (
     "encode_import_profile",
     "evaluate_baseline",
     "explain_baseline_proposal",
+    "inspect_import_profile",
     "load_baseline",
     "load_import_profile",
     "load_measurement_report",

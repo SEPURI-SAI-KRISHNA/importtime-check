@@ -24,3 +24,8 @@ the older baseline shape so profile loading cannot quietly reinterpret it.
 Their exact bytes are pinned in the profile artifact tests alongside the
 measurement report fixtures. These are synthetic examples, not measurements
 or recommended CI thresholds.
+
+`profile-v1-two-target.json` adds fixed `email` and `json` runs for inspection
+tests. It deliberately includes repeated names, equal self times, and zero
+self time; rankings retain original occurrence numbers and never sum
+overlapping cumulative times.
