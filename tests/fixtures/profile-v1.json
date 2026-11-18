@@ -1,0 +1,45 @@
+{
+  "environment": {
+    "implementation": "cpython",
+    "machine": "x86_64",
+    "platform": "linux",
+    "python": "3.11"
+  },
+  "profile_type": "import-profile",
+  "profile_version": 1,
+  "sampling": {
+    "samples": 1,
+    "statistic": "upper_median",
+    "warmups": 0
+  },
+  "targets": {
+    "json": {
+      "runs": [
+        {
+          "events": [
+            {
+              "cumulative_us": 8,
+              "depth": 1,
+              "module": "json.decoder",
+              "self_us": 6
+            },
+            {
+              "cumulative_us": 9,
+              "depth": 1,
+              "module": "json.decoder",
+              "self_us": 6
+            },
+            {
+              "cumulative_us": 25,
+              "depth": 0,
+              "module": "json",
+              "self_us": 2
+            }
+          ],
+          "number": 1,
+          "phase": "sample"
+        }
+      ]
+    }
+  }
+}

@@ -49,6 +49,14 @@ assert callable(importtime_check.load_measurement_report)
 profile = importtime_check.capture_import_profile(
     ("json", "email"), warmups=0, samples=1
 )
+from tempfile import TemporaryDirectory
+with TemporaryDirectory() as directory:
+    path = Path(directory) / "profile.json"
+    raw = importtime_check.encode_import_profile(profile)
+    path.write_bytes(raw)
+    loaded = importtime_check.load_import_profile(path)
+    assert loaded.source_sha256 is not None
+    assert importtime_check.encode_import_profile(loaded) == raw
 assert profile.profile_version == 1
 assert profile.source_sha256 is None
 assert tuple(profile.targets) == ("email", "json")

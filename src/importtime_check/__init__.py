@@ -52,6 +52,7 @@ from ._profile import (
     ProfileTarget,
     capture_import_profile,
 )
+from ._profile_artifact import encode_import_profile, load_import_profile
 from ._proposal import (
     BaselineProposalError,
     explain_baseline_proposal,
@@ -104,9 +105,11 @@ __all__ = (
     "decode_baseline",
     "decode_measurement_report",
     "encode_baseline",
+    "encode_import_profile",
     "evaluate_baseline",
     "explain_baseline_proposal",
     "load_baseline",
+    "load_import_profile",
     "load_measurement_report",
     "measure_import",
     "parse_importtime",
